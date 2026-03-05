@@ -1,0 +1,11 @@
+rag:
+  provider: "pgvector"
+  embedding_model: "${EMBEDDING_MODEL}"
+  chunking:
+    max_tokens: 450
+    overlap_tokens: 80
+  retrieval:
+    top_k: 10
+    min_score: 0.15
+  namespace:
+    collection: "slw_factpack_chunks"

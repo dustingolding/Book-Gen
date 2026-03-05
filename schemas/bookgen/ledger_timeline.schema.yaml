@@ -1,0 +1,12 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: TimelineLedger
+type: object
+required: [schema_version, series_id, events]
+properties:
+  schema_version:
+    type: string
+  series_id:
+    type: string
+  events:
+    type: array
+additionalProperties: true

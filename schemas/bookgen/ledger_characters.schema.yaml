@@ -1,0 +1,13 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: CharacterLedger
+type: object
+required: [schema_version, series_id, characters]
+properties:
+  schema_version:
+    type: string
+  series_id:
+    type: string
+  characters:
+    type: array
+    minItems: 1
+additionalProperties: true

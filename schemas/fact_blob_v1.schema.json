@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SideLine Wire FactBlob v1",
+  "type": "object",
+  "required": [
+    "blob_id",
+    "sport",
+    "league",
+    "blob_type",
+    "event_time_et",
+    "window",
+    "entities",
+    "facts",
+    "labels",
+    "scoring",
+    "provenance"
+  ],
+  "properties": {
+    "blob_id": { "type": "string", "minLength": 8 },
+    "sport": {
+      "type": "string",
+      "enum": [
+        "college_football",
+        "nfl",
+        "college_basketball",
+        "nba",
+        "nhl",
+        "mlb",
+        "womens_college_basketball",
+        "wnba",
+        "major_international"
+      ]
+    },
+    "league": { "type": "string" },
+    "blob_type": {
+      "type": "string",
+      "enum": [
+        "game_result",
+        "matchup",
+        "news",
+        "team_trend",
+        "player_line",
+        "standings_snapshot",
+        "outlook_signal"
+      ]
+    },
+    "event_time_et": { "type": "string" },
+    "window": {
+      "type": "string",
+      "enum": ["yesterday", "today", "last10", "season_to_date", "postseason", "offseason"]
+    },
+    "entities": {
+      "type": "object",
+      "required": ["game_id", "team_ids", "player_ids"],
+      "properties": {
+        "game_id": { "type": ["string", "null"] },
+        "team_ids": { "type": "array", "items": { "type": "string" } },
+        "player_ids": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "facts": {
+      "type": "object",
+      "required": ["typed_fields"],
+      "properties": {
+        "typed_fields": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "required": ["season_phase", "category", "importance", "audience_weight"],
+      "properties": {
+        "season_phase": {
+          "type": "string",
+          "enum": ["OFFSEASON", "PRESEASON", "REGULAR_SEASON", "POSTSEASON", "CHAMPIONSHIP_WINDOW"]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "scores", "preview", "injury", "trade", "coaching", "draft", "combine", "free_agency",
+            "record_watch", "milestone", "discipline", "controversy", "standings", "international_major", "other"
+          ]
+        },
+        "importance": { "type": "string", "enum": ["low", "medium", "high"] },
+        "audience_weight": { "type": "string", "enum": ["core", "secondary", "niche"] }
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "required": [
+        "base_weight", "phase_multiplier", "recency_multiplier", "impact_multiplier", "uniqueness_multiplier",
+        "blob_type_multiplier", "final_priority_score"
+      ],
+      "properties": {
+        "base_weight": { "type": "number", "minimum": 0 },
+        "phase_multiplier": { "type": "number", "minimum": 0 },
+        "recency_multiplier": { "type": "number", "minimum": 0 },
+        "impact_multiplier": { "type": "number", "minimum": 0 },
+        "uniqueness_multiplier": { "type": "number", "minimum": 0 },
+        "blob_type_multiplier": { "type": "number", "minimum": 0 },
+        "final_priority_score": { "type": "number", "minimum": 0 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source_ids", "retrieved_at_et"],
+      "properties": {
+        "source_ids": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "retrieved_at_et": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Trigger the manual GitHub workflow `bookgen-publish-gate`.
+
+Usage:
+  ./scripts/bookgen_trigger_publish_gate.sh --project-id <id> [--repo owner/name] [--no-require-promotion] [--wait]
+
+Options:
+  --project-id <id>         BookGen project ID
+  --repo <owner/name>       GitHub repo (default: inferred from git remote origin)
+  --no-require-promotion    Set workflow input require_promotion=false
+  --wait                    Wait for workflow completion and print final status
+  -h, --help                Show help
+EOF
+}
+
+PROJECT_ID=""
+REPO=""
+REQUIRE_PROMOTION="true"
+WAIT="false"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --project-id) PROJECT_ID="$2"; shift 2 ;;
+    --repo) REPO="$2"; shift 2 ;;
+    --no-require-promotion) REQUIRE_PROMOTION="false"; shift 1 ;;
+    --wait) WAIT="true"; shift 1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown argument: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+if [[ -z "${PROJECT_ID}" ]]; then
+  echo "--project-id is required." >&2
+  usage
+  exit 1
+fi
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT_DIR}"
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "gh CLI is required." >&2
+  exit 1
+fi
+
+if [[ -z "${REPO}" ]]; then
+  remote_url="$(git config --get remote.origin.url || true)"
+  if [[ -z "${remote_url}" ]]; then
+    echo "Could not infer repo from git remote; pass --repo owner/name." >&2
+    exit 1
+  fi
+  REPO="$(echo "${remote_url}" | sed -E 's#(git@github.com:|https://github.com/)##; s#\.git$##')"
+fi
+
+echo "Dispatching workflow for repo ${REPO}..."
+gh workflow run bookgen-publish-gate.yml \
+  --repo "${REPO}" \
+  -f project_id="${PROJECT_ID}" \
+  -f require_promotion="${REQUIRE_PROMOTION}"
+
+echo "Workflow dispatched: project_id=${PROJECT_ID}, require_promotion=${REQUIRE_PROMOTION}"
+
+if [[ "${WAIT}" != "true" ]]; then
+  exit 0
+fi
+
+echo "Waiting for completion..."
+gh run watch --repo "${REPO}" --workflow bookgen-publish-gate.yml --exit-status

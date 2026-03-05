@@ -1,0 +1,21 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: InstallmentOutline
+type: object
+required:
+  - schema_version
+  - series_id
+  - installment_id
+  - outline_version
+  - structure_model
+  - beats
+  - chapters
+properties:
+  schema_version:
+    type: string
+  beats:
+    type: array
+    minItems: 1
+  chapters:
+    type: array
+    minItems: 1
+additionalProperties: true

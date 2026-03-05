@@ -1,0 +1,12 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ThreadLedger
+type: object
+required: [schema_version, series_id, threads]
+properties:
+  schema_version:
+    type: string
+  series_id:
+    type: string
+  threads:
+    type: array
+additionalProperties: true

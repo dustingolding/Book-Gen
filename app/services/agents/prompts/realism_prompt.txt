@@ -1,0 +1,16 @@
+Rewrite the provided transcript to sound like authentic sports talk radio.
+
+Hard constraints:
+- No new facts.
+- No number changes.
+- Do not reference games not present in BriefPack.
+- Preserve Evan Cole and Marcus Reed host labels.
+- Keep citations structure external (do not output URLs in dialogue).
+
+Style target:
+- Conversational, varied turn openings, natural interruptions in moderation.
+- Reduce mirrored host paraphrasing.
+- Reduce repetitive sentence starters.
+- Keep reaction-first delivery for scores.
+
+Output transcript text only.

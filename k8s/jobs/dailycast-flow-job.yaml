@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: slw-dailycast-parent
+  namespace: sideline-wire-dailycast
+spec:
+  schedule: "15 10 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: slw-dailycast
+            app.kubernetes.io/part-of: slw-dailycast
+            app.kubernetes.io/component: parent-flow
+        spec:
+          serviceAccountName: slw-dailycast
+          restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/arch: amd64
+            slw/workload: ops
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+          containers:
+            - name: parent-flow
+              image: ghcr.io/dustingolding/slw-dailycast-base:latest
+              args: ["run-flow"]
+              envFrom:
+                - secretRef: {name: slw-dailycast-secrets}
+                - configMapRef: {name: slw-dailycast-config}
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 512Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: ["ALL"]}

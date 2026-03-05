@@ -1,0 +1,5 @@
+ARG BASE_IMAGE=ghcr.io/dustingolding/slw-dailycast-base:latest
+FROM ${BASE_IMAGE}
+
+ENTRYPOINT ["python", "-m", "app.cli"]
+CMD ["render"]

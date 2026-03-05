@@ -1,0 +1,19 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python env/cache
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local outputs/artifacts
+exports/
+docs/bookgen/checklists/
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/

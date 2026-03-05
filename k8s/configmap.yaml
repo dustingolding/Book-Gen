@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slw-dailycast-config
+  namespace: sideline-wire-dailycast
+data:
+  S3_BUCKET: "slw-dailycast"
+  LOG_LEVEL: "INFO"

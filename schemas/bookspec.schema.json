@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sidelinewire.local/schemas/bookspec.schema.json",
+  "title": "BookSpec",
+  "type": "object",
+  "required": [
+    "project_id",
+    "title",
+    "genre",
+    "word_count_target",
+    "pov",
+    "prompt_pack_version",
+    "rubric_version"
+  ],
+  "properties": {
+    "project_id": { "type": "string", "minLength": 3 },
+    "title": { "type": "string", "minLength": 1 },
+    "genre": { "type": "string", "minLength": 2 },
+    "subgenre": { "type": "string" },
+    "target_audience": { "type": "string" },
+    "tone": { "type": "string" },
+    "themes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "word_count_target": { "type": "integer", "minimum": 2000 },
+    "chapter_count": { "type": "integer", "minimum": 1, "maximum": 120 },
+    "pov": { "type": "string" },
+    "protagonist_goal": { "type": "string" },
+    "core_conflict": { "type": "string" },
+    "stakes": { "type": "string" },
+    "characters": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "setting_rules": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "hook_words": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "prompt_pack_version": { "type": "string", "minLength": 1 },
+    "rubric_version": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": true
+}

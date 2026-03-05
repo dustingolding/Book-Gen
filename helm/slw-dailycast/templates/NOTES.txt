@@ -1,0 +1,7 @@
+Release {{ .Release.Name }} deployed.
+
+Check scheduled jobs:
+  kubectl -n {{ .Release.Namespace }} get cronjobs
+
+Trigger one run:
+  kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ include "slw-dailycast.fullname" . }} manual-$(date +%s)

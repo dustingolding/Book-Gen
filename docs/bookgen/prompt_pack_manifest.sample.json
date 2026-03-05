@@ -1,0 +1,21 @@
+{
+  "genre": "thriller",
+  "version": "v1",
+  "structure": {
+    "acts": 3,
+    "chapter_goal": "Escalating tension with grounded cause/effect."
+  },
+  "context_tiers": {
+    "tier_1": ["tone_snapshot", "chapter_card", "character_slice", "theme_slice", "world_slice"],
+    "tier_2": ["active_threads", "prior_chapter_summary", "research_slice"],
+    "tier_3": ["constitution_full", "archived_threads", "raw_research"]
+  },
+  "style_rules": [
+    "Avoid omniscient narration drift.",
+    "Keep scene-level stakes explicit.",
+    "No filler exposition paragraphs."
+  ],
+  "safety_rules": [
+    "No disallowed violent detail for target audience bounds."
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "genre": "thriller",
+  "version": "v1",
+  "chapter_min_words": 120,
+  "pass_overall": 7.0,
+  "hard_fail": [
+    { "category": "world_rule_compliance", "min_score": 7.0 },
+    { "category": "character_consistency", "min_score": 7.0 },
+    { "category": "escalation_compliance", "min_score": 7.0 }
+  ]
+}

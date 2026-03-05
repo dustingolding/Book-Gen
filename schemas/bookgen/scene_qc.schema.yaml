@@ -1,0 +1,27 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: SceneQC
+type: object
+required:
+  - schema_version
+  - chapter_id
+  - pass_status
+  - checks
+  - metrics
+  - issues
+properties:
+  schema_version:
+    type: string
+  chapter_id:
+    type: string
+  pass_status:
+    type: string
+    enum: [PASS, FAIL]
+  checks:
+    type: object
+  metrics:
+    type: object
+  issues:
+    type: array
+    items:
+      type: string
+additionalProperties: true

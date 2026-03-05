@@ -1,0 +1,41 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: EvalReport
+type: object
+required:
+  - schema_version
+  - series_id
+  - installment_id
+  - chapter_id
+  - model
+  - prompt_pack_version
+  - scores
+  - overall
+  - drift_flags
+  - violations
+  - rewrite_recommendations
+  - pass_status
+properties:
+  schema_version:
+    type: string
+  scores:
+    type: object
+    required:
+      - thematic_coherence
+      - character_consistency
+      - voice_stability
+      - world_rule_compliance
+      - escalation_compliance
+      - pacing
+      - structural_clarity
+      - originality
+  overall:
+    type: number
+  drift_flags:
+    type: object
+  violations:
+    type: array
+  rewrite_recommendations:
+    type: array
+  pass_status:
+    enum: [FAIL, PASS, PASS_WITH_NOTES]
+additionalProperties: true

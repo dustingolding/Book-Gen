@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "slw-dailycast.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "slw-dailycast.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: {{ .Values.appPartOf | quote }}
+spec:
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  concurrencyPolicy: {{ .Values.cronjob.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.cronjob.backoffLimit }}
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{ include "slw-dailycast.name" . }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/part-of: {{ .Values.appPartOf | quote }}
+        spec:
+          serviceAccountName: {{ include "slw-dailycast.serviceAccountName" . }}
+          restartPolicy: {{ .Values.cronjob.restartPolicy }}
+          securityContext:
+            runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            fsGroup: {{ .Values.securityContext.fsGroup }}
+          containers:
+            - name: {{ .Values.workload.containerName | quote }}
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: ["python", "-m", "app.cli"]
+              args:
+{{- range .Values.cronjob.args }}
+                - {{ . | quote }}
+{{- end }}
+              envFrom:
+                - secretRef:
+                    name: {{ .Values.secret.name }}
+                - configMapRef:
+                    name: {{ include "slw-dailycast.fullname" . }}-config
+{{- if .Values.extraEnv }}
+              env:
+{{- range .Values.extraEnv }}
+                - name: {{ .name }}
+                  value: {{ .value | quote }}
+{{- end }}
+{{- end }}
+              resources:
+{{ toYaml .Values.resources | indent 16 }}
+              volumeMounts:
+                - name: workdir
+                  mountPath: /var/lib/slw
+              securityContext:
+                allowPrivilegeEscalation: {{ .Values.containerSecurityContext.allowPrivilegeEscalation }}
+                readOnlyRootFilesystem: {{ .Values.containerSecurityContext.readOnlyRootFilesystem }}
+                capabilities:
+                  drop:
+{{- range .Values.containerSecurityContext.capabilities.drop }}
+                    - {{ . }}
+{{- end }}
+          volumes:
+            - name: workdir
+              persistentVolumeClaim:
+                claimName: {{ .Values.pvc.name }}
+{{- with .Values.nodeSelector }}
+          nodeSelector:
+{{ toYaml . | indent 12 }}
+{{- end }}
+{{- with .Values.affinity }}
+          affinity:
+{{ toYaml . | indent 12 }}
+{{- end }}
+{{- with .Values.tolerations }}
+          tolerations:
+{{ toYaml . | indent 12 }}
+{{- end }}

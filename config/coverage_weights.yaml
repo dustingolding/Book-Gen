@@ -1,0 +1,51 @@
+sports:
+  college_football:
+    base_weight: 100
+  nfl:
+    base_weight: 90
+  college_basketball:
+    base_weight: 80
+  nba:
+    base_weight: 70
+  womens_college_basketball:
+    base_weight: 60
+  mlb:
+    base_weight: 60
+  wnba:
+    base_weight: 55
+  nhl:
+    base_weight: 55
+  major_international:
+    base_weight: 35
+
+phase_multipliers:
+  OFFSEASON: 0.25
+  PRESEASON: 0.75
+  REGULAR_SEASON: 1.0
+  POSTSEASON: 1.6
+  CHAMPIONSHIP_WINDOW: 2.0
+
+news_multiplier:
+  enabled: true
+  value: 1.5
+
+offseason_caps:
+  max_show_share: 0.08
+  max_show_share_big_news: 0.25
+
+recency_activity_factor:
+  buckets:
+    "0": 0.3
+    "1-3": 0.8
+    "4-10": 1.0
+    "11+": 1.2
+
+show_rules:
+  target_runtime_minutes_min: 30
+  target_runtime_minutes_max: 45
+  runtime_default_minutes: 40
+  wpm_baseline: 145
+  max_deep_dive_games: 2
+  max_scoreboard_games_per_sport: 10
+  max_major_international_share: 0.20
+  postseason_opens_show: true

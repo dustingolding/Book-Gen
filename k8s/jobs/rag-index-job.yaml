@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: slw-rag-index
+  namespace: sideline-wire-dailycast
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      serviceAccountName: slw-dailycast
+      restartPolicy: Never
+      containers:
+        - name: rag-index
+          image: ghcr.io/dustingolding/slw-dailycast-base:latest
+          envFrom:
+            - secretRef: {name: slw-dailycast-secrets}
+            - configMapRef: {name: slw-dailycast-config}
+          command: ["python", "-c"]
+          args:
+            - |
+              from datetime import date
+              from app.flows.dailycast_flow_v4 import init_run_branch_task
+              from app.flows.rag_index_flow import rag_index_flow
+              d = date.today().isoformat()
+              b = init_run_branch_task.fn(d)
+              rag_index_flow(run_date=d, lakefs_branch=b)

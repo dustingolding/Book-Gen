@@ -1,0 +1,97 @@
+nameOverride: ""
+fullnameOverride: ""
+appPartOf: slw-dailycast
+
+workload:
+  containerName: dailycast-parent
+
+image:
+  repository: ghcr.io/dustingolding/slw-dailycast-base
+  tag: latest
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+
+config:
+  S3_BUCKET: slw-dailycast
+  LOG_LEVEL: INFO
+
+secret:
+  create: false
+  name: slw-dailycast-secrets
+  data: {}
+
+cronjob:
+  schedule: "15 10 * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  backoffLimit: 1
+  restartPolicy: Never
+  args:
+    - run-flow
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+pvc:
+  enabled: true
+  name: slw-dailycast-pvc
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  size: 20Gi
+
+networkPolicy:
+  enabled: false
+  allowMinioNamespace: minio
+  allowPrefectNamespace: prefect
+  allowDnsNamespace: kube-system
+  postgres:
+    namespace: default
+    podSelector:
+      app: postgres
+    port: 5432
+  mlflow:
+    namespace: log-anomaly
+    podSelector:
+      app: mlflow
+    port: 5000
+  minioPorts:
+    - 9000
+    - 443
+  prefectPort: 4200
+  allowLlmHttps: true
+
+extraEnv:
+  - name: HOME
+    value: /var/lib/slw
+  - name: PREFECT_HOME
+    value: /var/lib/slw/.prefect
+  - name: GIT_PYTHON_REFRESH
+    value: quiet
+
+nodeSelector:
+  kubernetes.io/arch: amd64
+  slw/workload: ops
+tolerations: []
+affinity: {}

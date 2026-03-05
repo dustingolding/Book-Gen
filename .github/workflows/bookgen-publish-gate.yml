@@ -1,0 +1,86 @@
+name: bookgen-publish-gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: "BookGen project ID to validate for publish readiness"
+        required: true
+        type: string
+      require_promotion:
+        description: "Fail readiness if no promotion reference exists"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  publish-gate:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ inputs.project_id }}
+      MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
+      MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+      MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+      MINIO_SECURE: ${{ secrets.MINIO_SECURE }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      LAKEFS_ENDPOINT: ${{ secrets.LAKEFS_ENDPOINT }}
+      LAKEFS_ACCESS_KEY: ${{ secrets.LAKEFS_ACCESS_KEY }}
+      LAKEFS_SECRET_KEY: ${{ secrets.LAKEFS_SECRET_KEY }}
+      LAKEFS_REPOSITORY: ${{ secrets.LAKEFS_REPOSITORY }}
+      LAKEFS_BRANCH: ${{ secrets.LAKEFS_BRANCH }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate required storage/release environment
+        run: |
+          required=(
+            MINIO_ENDPOINT
+            MINIO_ACCESS_KEY
+            MINIO_SECRET_KEY
+            S3_BUCKET
+            LAKEFS_ENDPOINT
+            LAKEFS_ACCESS_KEY
+            LAKEFS_SECRET_KEY
+            LAKEFS_REPOSITORY
+            LAKEFS_BRANCH
+          )
+          for key in "${required[@]}"; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "Missing required secret/env: ${key}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Run publish preparation pipeline
+        run: |
+          args=(--project-id "${PROJECT_ID}")
+          if [[ "${{ inputs.require_promotion }}" == "true" ]]; then
+            args+=(--require-promotion)
+          fi
+          ./scripts/bookgen_prepare_publish.sh "${args[@]}"
+
+      - name: Verify package checksum
+        run: |
+          cd "exports/publish-packages/${PROJECT_ID}"
+          sha256sum -c SHA256SUMS.txt
+
+      - name: Upload publish package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-package-${{ inputs.project_id }}
+          path: |
+            exports/publish-packages/${{ inputs.project_id }}/*
+            docs/bookgen/checklists/${{ inputs.project_id }}.md

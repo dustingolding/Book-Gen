@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: slw-briefpack
+  namespace: sideline-wire-dailycast
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: slw-dailycast
+        app.kubernetes.io/part-of: slw-dailycast
+        app.kubernetes.io/component: briefpack
+    spec:
+      serviceAccountName: slw-dailycast
+      restartPolicy: Never
+      nodeSelector:
+        kubernetes.io/arch: amd64
+        slw/workload: ops
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: briefpack
+          image: ghcr.io/dustingolding/slw-dailycast-base:latest
+          args: ["briefpack"]
+          envFrom:
+            - secretRef: {name: slw-dailycast-secrets}
+            - configMapRef: {name: slw-dailycast-config}
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}

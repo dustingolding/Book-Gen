@@ -1,0 +1,29 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: SceneBeats
+type: object
+required:
+  - schema_version
+  - installment_id
+  - chapter_id
+  - chapter_index
+  - beats
+properties:
+  schema_version:
+    type: string
+  installment_id:
+    type: string
+  chapter_id:
+    type: string
+  chapter_index:
+    type: integer
+    minimum: 1
+  beats:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      required:
+        - scene_id
+        - beat
+        - intent
+additionalProperties: true

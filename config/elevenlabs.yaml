@@ -1,0 +1,18 @@
+elevenlabs:
+  api_key: "${ELEVENLABS_API_KEY}"
+  voices:
+    evan_cole: "${ELEVEN_VOICE_EVAN}"
+    marcus_reed: "${ELEVEN_VOICE_MARCUS}"
+    tyler_grant: "${ELEVEN_VOICE_TYLER}"
+    darius_vaughn: "${ELEVEN_VOICE_DARIUS}"
+    caleb_mercer: "${ELEVEN_VOICE_CALEB}"
+    lucas_bennett: "${ELEVEN_VOICE_LUCAS}"
+  defaults:
+    stability: 0.45
+    similarity_boost: 0.80
+    style: 0.35
+    speaker_boost: true
+  pacing:
+    short_pause_ms: 200
+    med_pause_ms: 350
+    long_pause_ms: 550

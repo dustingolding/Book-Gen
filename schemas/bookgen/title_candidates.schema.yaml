@@ -1,0 +1,26 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: TitleCandidates
+type: object
+required:
+  - schema_version
+  - series_id
+  - engine_version
+  - generated_utc
+  - candidates
+properties:
+  schema_version:
+    type: string
+  series_id:
+    type: string
+  engine_version:
+    type: string
+  generated_utc:
+    type: string
+    format: date-time
+  candidates:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      required: [installment_id, title, features, scores, flags]
+additionalProperties: true

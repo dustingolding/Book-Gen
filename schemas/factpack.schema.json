@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sidelinewire.local/schemas/factpack.schema.json",
+  "title": "SLW FactPack v2",
+  "type": "object",
+  "required": [
+    "meta",
+    "show_identity",
+    "coverage",
+    "yesterday_results",
+    "today_matchups",
+    "major_news",
+    "season_stats",
+    "season_outlooks",
+    "flags"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "process_date",
+        "yesterday_window_et",
+        "today_date_et",
+        "wpm_baseline",
+        "runtime_target_minutes"
+      ],
+      "properties": {
+        "process_date": { "type": "string", "format": "date" },
+        "yesterday_window_et": {
+          "type": "object",
+          "required": ["start", "end"],
+          "properties": {
+            "start": { "type": "string" },
+            "end": { "type": "string" }
+          }
+        },
+        "today_date_et": { "type": "string", "format": "date" },
+        "wpm_baseline": { "type": "integer" },
+        "runtime_target_minutes": { "type": "number" }
+      }
+    },
+    "show_identity": {
+      "type": "object",
+      "required": ["name", "hosts", "voice_contract"]
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["ranking_order_locked", "sport_states", "allocations"],
+      "properties": {
+        "ranking_order_locked": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sport_states": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "allocations": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "yesterday_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_id", "sport", "league", "title", "summary", "citations", "key_players", "impact_signals"],
+        "properties": {
+          "source_id": { "type": "string" },
+          "sport": { "type": "string" },
+          "league": { "type": "string" },
+          "title": { "type": "string" },
+          "summary": { "type": "string" },
+          "citations": { "type": "array", "items": { "type": "string" } },
+          "key_players": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "line", "impact_score", "trend"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "line": {
+                  "type": "string",
+                  "pattern": "^.+ - [0-9]+ PTS, [0-9]+ REB, [0-9]+ AST(, [0-9]+ STL)?(, [0-9]+ BLK)?$"
+                },
+                "impact_score": { "type": "number" },
+                "trend": { "type": "string", "minLength": 1 },
+                "stats": {
+                  "type": "object",
+                  "properties": {
+                    "PTS": { "type": "integer" },
+                    "REB": { "type": "integer" },
+                    "AST": { "type": "integer" },
+                    "STL": { "type": "integer" },
+                    "BLK": { "type": "integer" }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "why_it_matters": {
+            "type": "array",
+            "minItems": 0,
+            "items": { "type": "string", "minLength": 8 }
+          },
+          "impact_signals": {
+            "type": "object",
+            "required": ["phase"],
+            "properties": {
+              "phase": { "type": "string" },
+              "winner": { "type": "string" },
+              "loser": { "type": "string" },
+              "winner_score": { "type": "integer" },
+              "loser_score": { "type": "integer" },
+              "margin": { "type": "integer" },
+              "total_points": { "type": "integer" },
+              "tempo_profile": { "type": "string" },
+              "priority_tier": { "type": "string" },
+              "playoff_implication": { "type": "boolean" },
+              "top_players": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "top_player_impact_scores": {
+                "type": "array",
+                "items": { "type": "number" }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "today_matchups": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "major_news": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "season_stats": { "type": "object" },
+    "season_outlooks": { "type": "object" },
+    "flags": {
+      "type": "object",
+      "required": ["partial_coverage", "major_international_event"],
+      "properties": {
+        "partial_coverage": { "type": "boolean" },
+        "major_international_event": { "type": "boolean" }
+      }
+    }
+  }
+}

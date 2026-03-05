@@ -1,0 +1,53 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: InstallmentPack
+type: object
+required:
+  - schema_version
+  - series_id
+  - installment_id
+  - installment_index
+  - created_utc
+  - intent
+  - theme_expression
+  - arc_state_entry
+  - continuity_delta_in
+  - research_pack
+  - escalation_bounds
+  - output_targets
+properties:
+  schema_version:
+    type: string
+  series_id:
+    type: string
+  installment_id:
+    type: string
+  installment_index:
+    type: integer
+    minimum: 1
+  created_utc:
+    type: string
+    format: date-time
+  intent:
+    type: object
+    required: [narrative_role, stakes_level, pacing_goal, primary_arc_focus, summary]
+  theme_expression:
+    type: object
+    required: [primary_focus, required_manifestations]
+  arc_state_entry:
+    type: object
+  continuity_delta_in:
+    type: object
+  research_pack:
+    type: object
+    required: [scope, items]
+  escalation_bounds:
+    type: object
+    required:
+      - max_conflict_scope
+      - max_violence_level
+      - max_institutional_response
+      - irreversible_consequences_allowed
+  output_targets:
+    type: object
+    required: [word_count_target, chapter_count_target, output_formats]
+additionalProperties: true

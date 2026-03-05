@@ -1,0 +1,27 @@
+hosts:
+  evan_cole:
+    display_name: "Evan Cole"
+    role: "Host A"
+    archetype: "Analytical anchor"
+    voice_style:
+      - calm
+      - context-first
+      - implication-driven
+      - avoids hot takes
+    banned_phrases:
+      - "It's interesting to see"
+      - "In conclusion"
+      - "Next up"
+  marcus_reed:
+    display_name: "Marcus Reed"
+    role: "Host B"
+    archetype: "Reactive co-host"
+    voice_style:
+      - energetic but credible
+      - natural reactions
+      - mild disagreement
+      - pace setter
+    banned_phrases:
+      - "Thrilling matchup"
+      - "Statement game"
+      - "Huge win"

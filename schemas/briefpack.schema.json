@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sidelinewire.local/schemas/briefpack.schema.json",
+  "title": "Briefpack",
+  "type": "object",
+  "required": ["run_date", "top_scores", "headlines", "upcoming_matchups", "citations"],
+  "properties": {
+    "run_date": {"type": "string", "format": "date"},
+    "top_scores": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/entry"}
+    },
+    "headlines": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/entry"}
+    },
+    "upcoming_matchups": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/entry"}
+    },
+    "citations": {
+      "type": "array",
+      "items": {"type": "string", "format": "uri"}
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "required": ["event_id", "title", "summary", "score", "citations"],
+      "properties": {
+        "event_id": {"type": "string"},
+        "title": {"type": "string"},
+        "summary": {"type": "string"},
+        "score": {"type": "number"},
+        "citations": {
+          "type": "array",
+          "items": {"type": "string", "format": "uri"}
+        }
+      }
+    }
+  }
+}

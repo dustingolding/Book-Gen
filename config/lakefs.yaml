@@ -1,0 +1,12 @@
+lakefs:
+  endpoint: "${LAKEFS_ENDPOINT}"
+  access_key: "${LAKEFS_ACCESS_KEY}"
+  secret_key: "${LAKEFS_SECRET_KEY}"
+  repository: "slw-dailycast"
+  default_branch: "main"
+
+data_model:
+  branches:
+    run_prefix: "run"
+  commits:
+    message_prefix: "DailyCast"

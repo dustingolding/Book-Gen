@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN addgroup --system --gid 10001 app && \
+    adduser --system --uid 10001 --ingroup app app
+
+WORKDIR /opt/slw
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app ./app
+COPY config ./config
+COPY schemas ./schemas
+COPY prefect ./prefect
+
+USER 10001:10001
+CMD ["python", "-m", "app.cli", "run-flow"]

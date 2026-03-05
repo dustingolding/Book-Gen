@@ -1,0 +1,16 @@
+nameOverride: bookgen
+appPartOf: slw-dailycast
+
+workload:
+  containerName: bookgen-parent
+
+cronjob:
+  schedule: "30 11 * * *"
+  args:
+    - run-book-flow
+    - --project-id
+    - demo-thriller-001
+
+pvc:
+  enabled: false
+  name: slw-dailycast-pvc

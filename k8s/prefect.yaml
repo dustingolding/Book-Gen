@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prefect-server
+  namespace: sideline-wire-dailycast
+  labels:
+    app: prefect-server
+    app.kubernetes.io/part-of: slw-dailycast
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prefect-server
+  template:
+    metadata:
+      labels:
+        app: prefect-server
+        app.kubernetes.io/part-of: slw-dailycast
+    spec:
+      containers:
+        - name: prefect-server
+          image: prefecthq/prefect:2.20.11-python3.12
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+          args:
+            - |
+              export PREFECT_API_DATABASE_CONNECTION_URL="postgresql+asyncpg://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${PG_DB}"
+              exec prefect server start --host 0.0.0.0 --port 4200
+          ports:
+            - containerPort: 4200
+              name: http
+          env:
+            - name: PG_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: slw-dailycast-secrets
+                  key: PG_HOST
+            - name: PG_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: slw-dailycast-secrets
+                  key: PG_PORT
+            - name: PG_USER
+              valueFrom:
+                secretKeyRef:
+                  name: slw-dailycast-secrets
+                  key: PG_USER
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: slw-dailycast-secrets
+                  key: PG_PASSWORD
+            - name: PG_DB
+              valueFrom:
+                secretKeyRef:
+                  name: slw-dailycast-secrets
+                  key: PG_DB
+            - name: PREFECT_LOGGING_SERVER_LEVEL
+              value: INFO
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 4200
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 4200
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prefect-server
+  namespace: sideline-wire-dailycast
+  labels:
+    app: prefect-server
+    app.kubernetes.io/part-of: slw-dailycast
+spec:
+  selector:
+    app: prefect-server
+  ports:
+    - name: http
+      port: 4200
+      targetPort: 4200

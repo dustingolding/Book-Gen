@@ -1,0 +1,324 @@
+{
+  "project_id": "closed-session-series",
+  "title": "The Closed Session",
+  "series_title": "The Closed Session",
+  "genre": "political crime thriller",
+  "subgenre": "contemporary institutional thriller",
+  "target_audience": "adult",
+  "tone": "Grounded, restrained, hyper-realistic political tension. Drama emerges through classified briefings, private leverage, legal exposure, and institutional pressure rather than spectacle. Emotional force comes from consequence, compromised ideals, and the cost of choosing which truth to surface.",
+  "themes": [
+    "Power protects itself.",
+    "Public service versus political survival.",
+    "Truth has collateral damage."
+  ],
+  "word_count_target": 95000,
+  "chapter_count": 24,
+  "planned_series_length": 5,
+  "installment_id": "book-01",
+  "installment_index": 1,
+  "pov": "third_limited",
+  "protagonist_goal": "Expose corruption without triggering reckless institutional collapse.",
+  "core_conflict": "After a Senate staffer dies days after a classified briefing, reform-minded Senator Adrian Cole traces the death toward a defense-contractor cover-up and must decide whether exposing the truth will save the republic or fracture it.",
+  "stakes": "Adrian Cole quietly investigates the death of a Senate staffer after a classified briefing and discovers the death may be connected to contractor money, committee suppression, and a bipartisan culture of institutional self-protection. Book one should end with the conspiracy proven large enough to be real, dangerous enough to matter, and structurally embedded enough that exposure becomes morally complicated rather than triumphant.",
+  "narrative_role": "setup",
+  "stakes_level": "high",
+  "output_formats": [
+    "md",
+    "docx"
+  ],
+  "characters": [
+    {
+      "character_id": "adrian-cole",
+      "name": "Adrian Cole",
+      "role": "protagonist",
+      "immutable_traits": [
+        "analytical",
+        "controlled",
+        "observant",
+        "institutionally literate"
+      ],
+      "mutable_traits": [
+        "idealism",
+        "political patience",
+        "trust in process"
+      ],
+      "dialogue_tics": [
+        "precise phrasing",
+        "measured pauses",
+        "questions that test wording rather than volume"
+      ],
+      "taboo_phrases": [
+        "you have to trust me"
+      ],
+      "start_state": "Idealistic reformer who still believes clean exposure can produce institutional correction.",
+      "end_state": "Strategic insider who understands that reform sometimes requires shaping outcomes rather than simply revealing facts.",
+      "external_goal": "Expose corruption without triggering reckless institutional collapse.",
+      "internal_need": "Accept that moral clarity and responsible governance may not arrive at the same speed."
+    },
+    {
+      "character_id": "maya-rios",
+      "name": "Maya Rios",
+      "role": "supporting",
+      "immutable_traits": [
+        "pragmatic",
+        "loyal",
+        "operationally precise"
+      ],
+      "mutable_traits": [
+        "risk tolerance",
+        "willingness to shield Adrian from consequences"
+      ],
+      "dialogue_tics": [
+        "clipped responses",
+        "operational framing"
+      ],
+      "taboo_phrases": [
+        "it will all work out"
+      ],
+      "start_state": "Professional protector who believes damage control is the only adult political language.",
+      "end_state": "Operator willing to let the machine take a visible hit when silence becomes moral surrender.",
+      "external_goal": "Protect Adrian, the staff, and the office from being destroyed by a fight they cannot control.",
+      "internal_need": "Decide whether loyalty means restraint or support for necessary rupture."
+    },
+    {
+      "character_id": "thomas-avery",
+      "name": "Thomas Avery",
+      "role": "institutional_force",
+      "immutable_traits": [
+        "diplomatic",
+        "composed",
+        "strategically patient"
+      ],
+      "mutable_traits": [
+        "tolerance for Adrian's disruption",
+        "faith that containment will hold"
+      ],
+      "dialogue_tics": [
+        "indirect warnings",
+        "polite reframing"
+      ],
+      "taboo_phrases": [
+        "this is simple"
+      ],
+      "start_state": "Guardian of process who sees concealment as stewardship.",
+      "end_state": "Power broker forced to admit that containment has become complicity.",
+      "external_goal": "Preserve institutional stability and contain the fallout from a scandal that cannot be fully surfaced.",
+      "internal_need": "Confront the possibility that his definition of stewardship has become a system of permanent deferral."
+    },
+    {
+      "character_id": "elena-vale",
+      "name": "Elena Vale",
+      "role": "supporting",
+      "immutable_traits": [
+        "grieving",
+        "smart",
+        "morally impatient"
+      ],
+      "mutable_traits": [
+        "trust in Adrian",
+        "willingness to go public"
+      ],
+      "dialogue_tics": [
+        "cuts through euphemism"
+      ],
+      "taboo_phrases": [
+        "these things happen"
+      ],
+      "start_state": "Outsider demanding truth with no patience for process.",
+      "end_state": "Pressure point who learns how to weaponize process without being absorbed by it.",
+      "external_goal": "Learn what really happened to her brother and prevent his death from being administratively buried.",
+      "internal_need": "Understand that truth may arrive through partial victories rather than perfect justice."
+    }
+  ],
+  "setting_rules": [
+    "Classified information cannot be publicly disclosed without severe personal, legal, and strategic consequences.",
+    "Institutional processes slow scandal, redirect it, or contain it before they expose it.",
+    "Every escalation must produce a political, legal, or relational cost that remains in continuity."
+  ],
+  "locations": [
+    "U.S. Senate offices",
+    "classified briefing rooms",
+    "Washington D.C. private residences",
+    "committee hearing spaces",
+    "contractor-adjacent legal and consulting offices"
+  ],
+  "institutions": [
+    "U.S. Senate",
+    "Senate committees",
+    "intelligence community",
+    "defense contractors",
+    "executive branch national security apparatus",
+    "major press and political donor networks"
+  ],
+  "social_norms": [
+    "private leverage matters as much as public principle",
+    "career preservation often masquerades as institutional duty",
+    "silence can be framed as patriotism"
+  ],
+  "realism_mode": "strict",
+  "prose_density": "balanced",
+  "emotional_explicitness": "moderate",
+  "humor_level": "dry",
+  "pacing_profile": "steady",
+  "cliche_blacklist": [
+    "rogue mastermind running the whole government",
+    "one hearing fixes systemic corruption",
+    "perfect leak with no collateral cost"
+  ],
+  "prompt_pack_version": "v1",
+  "rubric_version": "v1",
+  "series_title_strategy": {
+    "naming_family": "institutional procedural phrases",
+    "title_format_rules": {
+      "prefix_style": "the",
+      "capitalization": "title_case",
+      "min_words": 2,
+      "max_words": 4,
+      "allowed_patterns": [
+        "The <ADJECTIVE> <NOUN>",
+        "The <NOUN_PHRASE>",
+        "<NOUN_PHRASE>"
+      ],
+      "disallowed_patterns": []
+    },
+    "tonal_requirements": [
+      "serious",
+      "politically credible",
+      "restrained",
+      "procedural"
+    ],
+    "avoid": [
+      "generic action thriller wording",
+      "spy pulp phrasing",
+      "overly metaphorical titles"
+    ],
+    "lexical_banks": {
+      "nouns": [
+        "session",
+        "record",
+        "brief",
+        "motion",
+        "rule",
+        "ledger",
+        "order",
+        "markup",
+        "hearing",
+        "file",
+        "vote",
+        "docket"
+      ],
+      "adjectives": [
+        "closed",
+        "quiet",
+        "redacted",
+        "sealed",
+        "public",
+        "final",
+        "classified",
+        "hidden",
+        "open",
+        "silent"
+      ],
+      "verbs_disallowed": [
+        "hunt",
+        "kill",
+        "strike",
+        "revenge"
+      ]
+    },
+    "series_cadence_rules": {
+      "no_repeated_head_noun": true,
+      "no_repeated_adjective": true,
+      "semantic_escalation_required": true
+    }
+  },
+  "canonical_source_path": "/home/dustin/log-anomaly-lab/The Closed Session Input.md",
+  "installment_title_briefs": [
+    {
+      "installment_id": "book-01",
+      "installment_index": 1,
+      "arc_role": "entry",
+      "exposure_level": "low",
+      "stakes_level": "high",
+      "semantic_targets": {
+        "must_imply": [
+          "secrecy",
+          "procedure",
+          "first breach"
+        ],
+        "must_avoid": [
+          "finality",
+          "apocalypse"
+        ]
+      }
+    },
+    {
+      "installment_id": "book-02",
+      "installment_index": 2,
+      "arc_role": "escalation",
+      "exposure_level": "medium",
+      "stakes_level": "high",
+      "semantic_targets": {
+        "must_imply": [
+          "containment strain",
+          "hidden record",
+          "quiet leverage"
+        ],
+        "must_avoid": [
+          "final reckoning"
+        ]
+      }
+    },
+    {
+      "installment_id": "book-03",
+      "installment_index": 3,
+      "arc_role": "breach",
+      "exposure_level": "medium",
+      "stakes_level": "high",
+      "semantic_targets": {
+        "must_imply": [
+          "public risk",
+          "institutional crack",
+          "formal action"
+        ],
+        "must_avoid": [
+          "resolution"
+        ]
+      }
+    },
+    {
+      "installment_id": "book-04",
+      "installment_index": 4,
+      "arc_role": "reckoning",
+      "exposure_level": "medium",
+      "stakes_level": "high",
+      "semantic_targets": {
+        "must_imply": [
+          "accountability",
+          "formal confrontation",
+          "irreversible record"
+        ],
+        "must_avoid": [
+          "entry-level secrecy"
+        ]
+      }
+    },
+    {
+      "installment_id": "book-05",
+      "installment_index": 5,
+      "arc_role": "exposure",
+      "exposure_level": "high",
+      "stakes_level": "high",
+      "semantic_targets": {
+        "must_imply": [
+          "public consequence",
+          "reckoning",
+          "record"
+        ],
+        "must_avoid": [
+          "entry-level secrecy"
+        ]
+      }
+    }
+  ]
+}

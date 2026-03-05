@@ -1,0 +1,162 @@
+schema_version: "1.0"
+constitution_id: "demo-thriller-001-constitution"
+title: "Signal in the Fog"
+created_utc: "2026-02-10T00:00:00Z"
+updated_utc: "2026-02-10T00:00:00Z"
+narrative_identity:
+  form: "series"
+  genre: "thriller"
+  subgenre: "techno-thriller"
+  audience:
+    age_band: "adult"
+    content_boundaries:
+      violence: "moderate"
+      sex: "fade_to_black"
+      profanity: "light"
+      substance_use: "light"
+      self_harm: "mentioned"
+    sensitivity_topics:
+      allowed: []
+      disallowed: []
+  pov:
+    mode: "third_limited"
+    primary_pov_count: 1
+    secondary_pov_allowed: false
+    head_hopping_allowed: false
+  tone_lock:
+    description: "Grounded, high-tension prose where every escalation is paid for in trust, leverage, or risk."
+    do:
+      - "anchor scenes in concrete objectives"
+      - "show consequences before moving to the next reveal"
+    dont:
+      - "use omniscient commentary"
+      - "solve tension with coincidence"
+  style_constitution:
+    prose_density: "balanced"
+    sentence_profile:
+      avg_words_target: 14
+      allowed_range: [8, 24]
+    dialogue_density:
+      target_percent: 30
+      allowed_range: [15, 60]
+    description_density:
+      target_percent: 25
+      allowed_range: [10, 45]
+    emotional_explicitness: "moderate"
+    humor_level: "dry"
+    pacing_profile: "steady"
+    forbidden_devices: ["purple_prose", "excess_exposition", "ai_tells"]
+    cliche_blacklist: []
+theme_engine:
+  primary:
+    statement: "trust vs control"
+    manifestation_mode: "choices"
+    disallowed_interpretations: []
+    avoid_preachiness: true
+  secondary:
+    - statement: "identity under pressure"
+      manifestation_mode: "mixed"
+      disallowed_interpretations: []
+  evolution_policy:
+    mode: "evolving"
+    notes: "Themes deepen through consequences instead of resetting between installments."
+world_model:
+  setting:
+    time_period: "contemporary"
+    locations: ["fog-bound port district", "secure operations floor"]
+    technology_level: "current and bounded"
+  governing_rules:
+    - id: "rule-001"
+      rule: "No implausible surveillance capabilities."
+      rationale: "The thriller depends on credible operational limits."
+      violations_allowed: false
+      violation_consequence: "Hard evaluation failure."
+    - id: "rule-002"
+      rule: "Timeline causality must remain strict."
+      rationale: "The continuity ledger must remain trustworthy."
+      violations_allowed: false
+      violation_consequence: "Hard evaluation failure."
+  institutions: ["law enforcement", "private intelligence vendor"]
+  social_norms: ["reputation controls access", "information moves faster than trust"]
+  realism_constraints:
+    mode: "strict"
+    notes: "Escalation must feel earned by evidence and visible cost."
+character_registry:
+  characters:
+    - character_id: "mara-voss"
+      name: "Mara Voss"
+      role: "protagonist"
+      immutable_traits: ["methodical under pressure", "protective of vulnerable sources"]
+      mutable_traits: ["trusts too slowly", "leans toward self-sacrifice"]
+      voice_markers:
+        diction: "plain"
+        sentence_rhythm: "medium"
+        dialogue_tics: ["asks for proof before agreeing"]
+        taboo_phrases: ["as you know"]
+      moral_boundaries:
+        - boundary: "will not burn a source for convenience"
+          cannot_cross: true
+      secrets:
+        - secret_id: "mara-voss-secret-01"
+          description: "Mara once benefited from the network she is now trying to expose."
+          known_by: ["mara-voss"]
+          reveal_policy: "conditional"
+      relationships:
+        - with: "elias-trent"
+          relation: "adversarial history"
+          trust_level: 0.1
+          notes: "Mara knows Elias anticipates institutions before they move."
+      arc_path:
+        start_state: "guarded and reactive"
+        end_state: "decisive and accountable"
+        allowed_transformation_bounds:
+          max_change_per_installment: "moderate"
+          regression_allowed: false
+escalation_framework:
+  enabled: true
+  model: "bounded"
+  ceilings:
+    conflict_scope: ["personal", "local", "regional", "national", "global"]
+    violence_level: ["none", "low", "moderate", "high"]
+    institutional_response: ["none", "attention", "suppression", "retaliation", "collapse"]
+  rules:
+    - id: "esc-001"
+      description: "Escalation may rise only when a visible consequence has already landed."
+      applies_to: "outline"
+      enforcement: "hard"
+      rationale: "Prevents inflationary plotting."
+  matrix:
+    - installment_index: 1
+      max_conflict_scope: "local"
+      max_violence_level: "low"
+      max_institutional_response: "attention"
+      irreversible_consequences_allowed: false
+    - installment_index: 2
+      max_conflict_scope: "regional"
+      max_violence_level: "moderate"
+      max_institutional_response: "suppression"
+      irreversible_consequences_allowed: false
+    - installment_index: 3
+      max_conflict_scope: "national"
+      max_violence_level: "high"
+      max_institutional_response: "retaliation"
+      irreversible_consequences_allowed: true
+rubric_defaults:
+  weights:
+    thematic_coherence: 0.18
+    character_consistency: 0.18
+    world_rule_compliance: 0.14
+    escalation_compliance: 0.10
+    voice_stability: 0.14
+    pacing: 0.14
+    structural_clarity: 0.08
+    originality: 0.04
+  thresholds:
+    pass_overall: 7.5
+    hard_fail:
+      - category: "world_rule_compliance"
+        min_score: 7.0
+      - category: "character_consistency"
+        min_score: 7.0
+      - category: "escalation_compliance"
+        min_score: 7.0

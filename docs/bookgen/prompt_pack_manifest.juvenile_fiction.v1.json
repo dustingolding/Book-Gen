@@ -1,0 +1,22 @@
+{
+  "genre": "juvenile fiction",
+  "version": "v1",
+  "structure": {
+    "acts": 3,
+    "chapter_goal": "Fast, scene-forward middle-grade momentum with clear cause and effect."
+  },
+  "context_tiers": {
+    "tier_1": ["tone_snapshot", "chapter_card", "character_slice", "theme_slice", "world_slice"],
+    "tier_2": ["active_threads", "prior_chapter_summary", "research_slice"],
+    "tier_3": ["constitution_full", "archived_threads", "raw_research"]
+  },
+  "style_rules": [
+    "Lead with concrete action and discovery, not abstract setup.",
+    "Use age-appropriate language while preserving narrative tension.",
+    "Show STEM concepts through character choices and problem-solving."
+  ],
+  "safety_rules": [
+    "No graphic violence or explicit content.",
+    "No glamorized reckless behavior without visible consequence."
+  ]
+}

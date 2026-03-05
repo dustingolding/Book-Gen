@@ -1,0 +1,23 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: TitleEngineReport
+type: object
+required:
+  - schema_version
+  - series_id
+  - engine_version
+  - summary
+  - qa_checks
+properties:
+  schema_version:
+    type: string
+  series_id:
+    type: string
+  engine_version:
+    type: string
+  summary:
+    type: object
+  qa_checks:
+    type: object
+  notes:
+    type: array
+additionalProperties: true

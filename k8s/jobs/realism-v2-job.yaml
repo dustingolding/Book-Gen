@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: slw-realism-v2
+  namespace: sideline-wire-dailycast
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      serviceAccountName: slw-dailycast
+      restartPolicy: Never
+      containers:
+        - name: realism-v2
+          image: ghcr.io/dustingolding/slw-dailycast-base:latest
+          envFrom:
+            - secretRef: {name: slw-dailycast-secrets}
+            - configMapRef: {name: slw-dailycast-config}
+          command: ["python", "-c"]
+          args:
+            - |
+              from datetime import date
+              from app.flows.dailycast_flow_v4 import init_run_branch_task
+              from app.flows.realism_flow_v2 import realism_flow_v2
+              d = date.today().isoformat()
+              b = init_run_branch_task.fn(d)
+              realism_flow_v2(run_date=d, lakefs_branch=b)

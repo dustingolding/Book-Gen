@@ -1,0 +1,59 @@
+schema_version: "1.0"
+series_id: "demo-thriller-001"
+installment_id: "book-01"
+installment_index: 1
+planned_series_length: 3
+created_utc: "2026-02-10T00:00:00Z"
+intent:
+  narrative_role: "setup"
+  stakes_level: "high"
+  pacing_goal: "steady"
+  primary_arc_focus:
+    - character_id: "mara-voss"
+      focus: "external"
+  summary: "Mara Voss pushes into a covert manipulation network while every credible lead strains a personal or professional loyalty."
+theme_expression:
+  primary_focus: "trust vs control"
+  secondary_focus: ["identity under pressure"]
+  required_manifestations: ["choice_with_consequence", "moral_tradeoff"]
+  disallowed_manifestations: []
+arc_state_entry:
+  character_states:
+    - character_id: "mara-voss"
+      arc_stage: "guarded and reactive"
+      moral_boundary_status: "intact"
+      relationship_deltas:
+        - with: "elias-trent"
+          trust_delta: 0.0
+          notes: "Hostility is stable but not yet public."
+continuity_delta_in:
+  active_threads:
+    - thread_id: "thread-core-conflict"
+      description: "Every lead compromises personal and professional loyalties."
+      status: "active"
+      introduced_in: "book-01"
+      last_touched: "book-01"
+    - thread_id: "thread-stakes"
+      description: "Failure enables large-scale social disruption and personal ruin."
+      status: "active"
+      introduced_in: "book-01"
+      last_touched: "book-01"
+  recent_closed_threads: []
+research_pack:
+  scope: "minimal"
+  items:
+    - topic: "No implausible surveillance capabilities."
+      type: "setting"
+      neutral_summary: "Technical access must stay believable and resource-bound."
+      terminology:
+        allowed_terms: []
+        avoid_terms: []
+escalation_bounds:
+  max_conflict_scope: "local"
+  max_violence_level: "low"
+  max_institutional_response: "attention"
+  irreversible_consequences_allowed: false
+output_targets:
+  word_count_target: 70000
+  chapter_count_target: 18
+  output_formats: ["md", "docx"]

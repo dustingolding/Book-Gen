@@ -1,0 +1,19 @@
+name: slw-dailycast
+prefect-version: 2.20.11
+
+deployments:
+  - name: dailycast-prod
+    version: "1.0.0"
+    tags:
+      - prod
+      - dailycast
+    description: Daily SIDE LINE WIRE DAILYCAST v4 pipeline
+    entrypoint: app/flows/dailycast_flow_v4.py:dailycast_parent_flow_v4
+    work_pool:
+      name: k8s-batch
+      work_queue_name: dailycast
+    schedule:
+      cron: "0 10 * * *"
+      timezone: "UTC"
+      active: true
+    parameters: {}

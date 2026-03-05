@@ -1,0 +1,26 @@
+show:
+  name: "SideLine Wire DailyCast"
+  hosts:
+    primary:
+      - "Evan Cole"
+      - "Marcus Reed"
+    specialists:
+      nfl: "Tyler Grant"
+      nba: "Darius Vaughn"
+      mlb: "Caleb Mercer"
+      major_international: "Lucas Bennett"
+  rules:
+    never_rename_show: true
+    never_rename_hosts: true
+    no_new_primary_hosts: true
+    two_host_core_format: true
+  format:
+    target_runtime_minutes: "30-45"
+    sections:
+      - "cold_open"
+      - "scoreboard_roundup"
+      - "major_storylines"
+      - "deep_dive_games"
+      - "today_matchups"
+      - "optional_international"
+      - "closing"
