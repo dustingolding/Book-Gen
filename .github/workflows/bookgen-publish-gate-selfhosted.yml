@@ -1,4 +1,4 @@
-name: bookgen-publish-gate
+name: bookgen-publish-gate-selfhosted
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   publish-gate:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     env:
       PROJECT_ID: ${{ inputs.project_id }}
       MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
@@ -89,7 +89,7 @@ jobs:
           }
 
           if [[ -z "${KUBE_CONFIG_B64:-}" ]] && [[ ! -f "${HOME}/.kube/config" ]] && (is_local_or_cluster_endpoint "${MINIO_ENDPOINT}" || is_local_or_cluster_endpoint "${LAKEFS_ENDPOINT}"); then
-            echo "Storage endpoints are local/cluster-internal but KUBE_CONFIG_B64 is not set." >&2
+            echo "Storage endpoints are local/cluster-internal but no kubeconfig is available on runner." >&2
             echo "Set KUBE_CONFIG_B64 (or provide ~/.kube/config on runner), or use externally reachable MINIO_ENDPOINT/LAKEFS_ENDPOINT." >&2
             exit 1
           fi

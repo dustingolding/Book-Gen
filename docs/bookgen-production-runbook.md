@@ -171,6 +171,11 @@ Notes:
 
 Use GitHub Actions workflow `bookgen-publish-gate` for an isolated publish-prep check that does not change regular CI/CD.
 
+Workflows:
+
+- `bookgen-publish-gate.yml` (GitHub-hosted)
+- `bookgen-publish-gate-selfhosted.yml` (self-hosted runner; recommended for cluster-internal endpoints)
+
 Required workflow input:
 
 - `project_id`
@@ -206,4 +211,10 @@ Local helper commands:
 
 # 3) Trigger the publish gate workflow for a project and wait for result
 ./scripts/bookgen_trigger_publish_gate.sh --project-id <project-id> --wait
+
+# 4) Trigger the self-hosted workflow variant
+./scripts/bookgen_trigger_publish_gate.sh \
+  --workflow bookgen-publish-gate-selfhosted.yml \
+  --project-id <project-id> \
+  --wait
 ```

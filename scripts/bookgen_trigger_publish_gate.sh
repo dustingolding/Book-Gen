@@ -6,11 +6,12 @@ usage() {
 Trigger the manual GitHub workflow `bookgen-publish-gate`.
 
 Usage:
-  ./scripts/bookgen_trigger_publish_gate.sh --project-id <id> [--repo owner/name] [--no-require-promotion] [--wait]
+  ./scripts/bookgen_trigger_publish_gate.sh --project-id <id> [--repo owner/name] [--workflow <file>] [--no-require-promotion] [--wait]
 
 Options:
   --project-id <id>         BookGen project ID
   --repo <owner/name>       GitHub repo (default: inferred from git remote origin)
+  --workflow <file>         Workflow file name (default: bookgen-publish-gate.yml)
   --no-require-promotion    Set workflow input require_promotion=false
   --wait                    Wait for workflow completion and print final status
   -h, --help                Show help
@@ -21,11 +22,13 @@ PROJECT_ID=""
 REPO=""
 REQUIRE_PROMOTION="true"
 WAIT="false"
+WORKFLOW_FILE="bookgen-publish-gate.yml"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project-id) PROJECT_ID="$2"; shift 2 ;;
     --repo) REPO="$2"; shift 2 ;;
+    --workflow) WORKFLOW_FILE="$2"; shift 2 ;;
     --no-require-promotion) REQUIRE_PROMOTION="false"; shift 1 ;;
     --wait) WAIT="true"; shift 1 ;;
     -h|--help) usage; exit 0 ;;
@@ -57,7 +60,7 @@ if [[ -z "${REPO}" ]]; then
 fi
 
 echo "Dispatching workflow for repo ${REPO}..."
-gh workflow run bookgen-publish-gate.yml \
+gh workflow run "${WORKFLOW_FILE}" \
   --repo "${REPO}" \
   -f project_id="${PROJECT_ID}" \
   -f require_promotion="${REQUIRE_PROMOTION}"
@@ -71,13 +74,13 @@ fi
 echo "Resolving latest workflow run ID..."
 RUN_ID="$(gh run list \
   --repo "${REPO}" \
-  --workflow bookgen-publish-gate.yml \
+  --workflow "${WORKFLOW_FILE}" \
   --limit 1 \
   --json databaseId \
   --jq '.[0].databaseId')"
 
 if [[ -z "${RUN_ID}" || "${RUN_ID}" == "null" ]]; then
-  echo "Could not resolve workflow run ID for bookgen-publish-gate.yml." >&2
+  echo "Could not resolve workflow run ID for ${WORKFLOW_FILE}." >&2
   exit 1
 fi
 
