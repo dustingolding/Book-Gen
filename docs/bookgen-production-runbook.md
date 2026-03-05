@@ -217,4 +217,12 @@ Local helper commands:
   --workflow bookgen-publish-gate-selfhosted.yml \
   --project-id <project-id> \
   --wait
+
+# 5) Check self-hosted runner capacity and recent run states
+./scripts/bookgen_selfhosted_runner_status.sh --repo <owner>/<repo>
+
+# 6) Bootstrap a self-hosted runner on a Linux host (foreground start)
+./scripts/bookgen_selfhosted_runner_quickstart.sh \
+  --repo <owner>/<repo> \
+  --start
 ```
