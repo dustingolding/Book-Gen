@@ -225,4 +225,14 @@ Local helper commands:
 ./scripts/bookgen_selfhosted_runner_quickstart.sh \
   --repo <owner>/<repo> \
   --start
+
+# 7) Download and verify publish artifact from latest successful self-hosted run
+./scripts/bookgen_collect_publish_artifact.sh \
+  --repo <owner>/<repo>
+
+# 8) Download and verify artifact for a specific project/run
+./scripts/bookgen_collect_publish_artifact.sh \
+  --repo <owner>/<repo> \
+  --project-id <project-id> \
+  --run-id <run-id>
 ```
