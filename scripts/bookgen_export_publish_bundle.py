@@ -78,6 +78,12 @@ def _build_store_with_fallback(namespace: str) -> tuple[ObjectStore, subprocess.
     except Exception as exc:
         if not _is_dns_resolution_error(exc):
             raise
+    kubeconfig_path = Path.home() / ".kube" / "config"
+    if os.getenv("GITHUB_ACTIONS") == "true" and not kubeconfig_path.exists() and not os.getenv("KUBE_CONFIG_B64"):
+        raise RuntimeError(
+            "MinIO endpoint DNS is not resolvable from this runner and kubeconfig is unavailable. "
+            "Use a self-hosted runner with cluster access, set KUBE_CONFIG_B64, or provide externally reachable MINIO_ENDPOINT."
+        )
     os.environ["MINIO_ENDPOINT"] = "http://127.0.0.1:19000"
     if not os.getenv("MINIO_LOCAL_ENDPOINT"):
         os.environ["MINIO_LOCAL_ENDPOINT"] = "http://127.0.0.1:19000"
