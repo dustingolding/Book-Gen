@@ -25,7 +25,7 @@ jobs:
       MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
       MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
       MINIO_SECURE: "false"
-      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      S3_BUCKET: "slw-dailycast"
       LAKEFS_ENDPOINT: ${{ secrets.LAKEFS_ENDPOINT }}
       LAKEFS_ACCESS_KEY: ${{ secrets.LAKEFS_ACCESS_KEY }}
       LAKEFS_SECRET_KEY: ${{ secrets.LAKEFS_SECRET_KEY }}
