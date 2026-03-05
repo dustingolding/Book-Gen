@@ -235,4 +235,16 @@ Local helper commands:
   --repo <owner>/<repo> \
   --project-id <project-id> \
   --run-id <run-id>
+
+# 9) One-command handoff (trigger gate + collect artifact + write summary)
+./scripts/bookgen_release_handoff.sh \
+  --repo <owner>/<repo> \
+  --project-id <project-id>
+
+# 10) Handoff from an already-successful run (no retrigger)
+./scripts/bookgen_release_handoff.sh \
+  --repo <owner>/<repo> \
+  --project-id <project-id> \
+  --collect-only \
+  --run-id <run-id>
 ```
