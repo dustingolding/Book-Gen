@@ -83,12 +83,24 @@ def _start_minio_port_forward(namespace: str, local_port: int = 19000) -> subpro
     raise RuntimeError("Failed to establish MinIO port-forward to 127.0.0.1:19000")
 
 
+def _is_dns_resolution_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return any(
+        marker in msg
+        for marker in (
+            "temporary failure in name resolution",
+            "name or service not known",
+            "failed to resolve",
+            "nodename nor servname provided",
+        )
+    )
+
+
 def _build_store_with_fallback(namespace: str) -> tuple[ObjectStore, subprocess.Popen[str] | None]:
     try:
         return ObjectStore(), None
     except Exception as exc:
-        msg = str(exc).lower()
-        if "temporary failure in name resolution" not in msg and "minio" not in msg:
+        if not _is_dns_resolution_error(exc):
             raise
     os.environ["MINIO_ENDPOINT"] = "http://127.0.0.1:19000"
     if not os.getenv("MINIO_LOCAL_ENDPOINT"):
