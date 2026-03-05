@@ -53,8 +53,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Set up kubectl (optional)
-        if: ${{ env.KUBE_CONFIG_B64 != '' }}
+      - name: Set up kubectl
         uses: azure/setup-kubectl@v4
 
       - name: Configure kubeconfig (optional)
@@ -62,6 +61,25 @@ jobs:
         run: |
           mkdir -p ~/.kube
           echo "${KUBE_CONFIG_B64}" | base64 -d > ~/.kube/config
+
+      - name: Load MinIO credentials from cluster secret (self-hosted)
+        run: |
+          if [[ -f "${HOME}/.kube/config" ]]; then
+            ak="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.MINIO_ACCESS_KEY}' | base64 -d | tr -d '\r\n')"
+            sk="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.MINIO_SECRET_KEY}' | base64 -d | tr -d '\r\n')"
+            if [[ -n "${ak}" && -n "${sk}" ]]; then
+              {
+                echo "MINIO_ACCESS_KEY=${ak}"
+                echo "MINIO_SECRET_KEY=${sk}"
+              } >> "${GITHUB_ENV}"
+              echo "Loaded MinIO credentials from Kubernetes secret."
+            else
+              echo "MinIO credentials in Kubernetes secret are empty." >&2
+              exit 1
+            fi
+          else
+            echo "No kubeconfig on runner; using workflow-provided MinIO credentials."
+          fi
 
       - name: Validate required storage/release environment
         run: |
