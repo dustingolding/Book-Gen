@@ -75,9 +75,14 @@ jobs:
             fi
           done
 
-          if [[ "${MINIO_ENDPOINT}" == *".svc.cluster.local"* ]] && [[ -z "${KUBE_CONFIG_B64:-}" ]]; then
-            echo "MINIO_ENDPOINT is cluster-internal but KUBE_CONFIG_B64 is not set." >&2
-            echo "Set KUBE_CONFIG_B64 secret or provide an externally reachable MINIO_ENDPOINT." >&2
+          is_local_or_cluster_endpoint() {
+            local endpoint="$1"
+            [[ "${endpoint}" == *".svc.cluster.local"* ]] || [[ "${endpoint}" == *"127.0.0.1"* ]] || [[ "${endpoint}" == *"localhost"* ]]
+          }
+
+          if [[ -z "${KUBE_CONFIG_B64:-}" ]] && (is_local_or_cluster_endpoint "${MINIO_ENDPOINT}" || is_local_or_cluster_endpoint "${LAKEFS_ENDPOINT}"); then
+            echo "Storage endpoints are local/cluster-internal but KUBE_CONFIG_B64 is not set." >&2
+            echo "Set KUBE_CONFIG_B64 secret, or use externally reachable MINIO_ENDPOINT/LAKEFS_ENDPOINT." >&2
             exit 1
           fi
 
