@@ -50,6 +50,10 @@ if ! command -v sha256sum >/dev/null 2>&1; then
   echo "sha256sum is required." >&2
   exit 1
 fi
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 is required." >&2
+  exit 1
+fi
 
 if [[ -z "${RUN_ID}" ]]; then
   RUN_ID="$(gh run list \
@@ -103,6 +107,7 @@ if [[ -z "${pkg_dir}" ]]; then
   echo "Could not find SHA256SUMS.txt under ${OUTPUT_DIR}." >&2
   exit 1
 fi
+pkg_dir_abs="$(cd "${pkg_dir}" && pwd)"
 
 echo "Verifying package checksums in ${pkg_dir}..."
 (
@@ -110,10 +115,39 @@ echo "Verifying package checksums in ${pkg_dir}..."
   sha256sum -c SHA256SUMS.txt
 )
 
+bundle_checksum_status="not_available"
+if [[ -f "${pkg_dir}/BUNDLE_SHA256SUMS.txt" ]]; then
+  pkg_zip="$(find "${pkg_dir}" -maxdepth 1 -type f -name '*.zip' | head -n1 || true)"
+  if [[ -z "${pkg_zip}" ]]; then
+    echo "BUNDLE_SHA256SUMS.txt found but no zip package present in ${pkg_dir}." >&2
+    exit 1
+  fi
+  tmp_extract_dir="$(mktemp -d)"
+  trap 'rm -rf "${tmp_extract_dir}"' EXIT
+
+  echo "Verifying unpacked bundle checksums..."
+  python3 - "${pkg_zip}" "${tmp_extract_dir}" <<'PY'
+import pathlib
+import sys
+import zipfile
+
+zip_path = pathlib.Path(sys.argv[1])
+target_dir = pathlib.Path(sys.argv[2])
+with zipfile.ZipFile(zip_path) as zf:
+    zf.extractall(target_dir)
+PY
+  (
+    cd "${tmp_extract_dir}"
+    sha256sum -c "${pkg_dir_abs}/BUNDLE_SHA256SUMS.txt"
+  )
+  bundle_checksum_status="pass"
+fi
+
 echo "{"
 echo "  \"repo\": \"${REPO}\","
 echo "  \"run_id\": ${RUN_ID},"
 echo "  \"artifact_name\": \"${ARTIFACT_NAME}\","
 echo "  \"package_dir\": \"${pkg_dir}\","
-echo "  \"checksum_status\": \"pass\""
+echo "  \"package_checksum_status\": \"pass\","
+echo "  \"bundle_checksum_status\": \"${bundle_checksum_status}\""
 echo "}"

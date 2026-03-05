@@ -106,6 +106,8 @@ mkdir -p "$(dirname "${SUMMARY_PATH}")"
 
 package_dir="$(printf '%s\n' "${collect_output}" | sed -n 's/^  "package_dir": "\(.*\)",$/\1/p' | tail -n1)"
 artifact_name="$(printf '%s\n' "${collect_output}" | sed -n 's/^  "artifact_name": "\(.*\)",$/\1/p' | tail -n1)"
+package_checksum_status="$(printf '%s\n' "${collect_output}" | sed -n 's/^  "package_checksum_status": "\(.*\)",$/\1/p' | tail -n1)"
+bundle_checksum_status="$(printf '%s\n' "${collect_output}" | sed -n 's/^  "bundle_checksum_status": "\(.*\)"$/\1/p' | tail -n1)"
 
 cat > "${SUMMARY_PATH}" <<EOF
 {
@@ -115,7 +117,8 @@ cat > "${SUMMARY_PATH}" <<EOF
   "run_id": ${RUN_ID},
   "artifact_name": "${artifact_name}",
   "package_dir": "${package_dir}",
-  "checksum_status": "pass"
+  "package_checksum_status": "${package_checksum_status}",
+  "bundle_checksum_status": "${bundle_checksum_status}"
 }
 EOF
 

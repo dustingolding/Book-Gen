@@ -227,6 +227,7 @@ Local helper commands:
   --start
 
 # 7) Download and verify publish artifact from latest successful self-hosted run
+#    (verifies both package SHA256SUMS and unpacked BUNDLE_SHA256SUMS)
 ./scripts/bookgen_collect_publish_artifact.sh \
   --repo <owner>/<repo>
 
