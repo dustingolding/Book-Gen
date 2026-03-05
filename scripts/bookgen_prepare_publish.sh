@@ -57,8 +57,20 @@ if [[ -f ".env" ]]; then
   set +a
 fi
 
+PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
+if [[ ! -x "${PYTHON_BIN}" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python3)"
+  elif command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python)"
+  else
+    echo "No Python interpreter found (.venv/bin/python, python3, python)." >&2
+    exit 1
+  fi
+fi
+
 READINESS_CMD=(
-  .venv/bin/python scripts/bookgen_publish_readiness.py
+  "${PYTHON_BIN}" scripts/bookgen_publish_readiness.py
   --project-id "${PROJECT_ID}"
 )
 if [[ "${REQUIRE_PROMOTION}" == "true" ]]; then
@@ -72,7 +84,7 @@ echo "Running publish readiness gate..."
 PYTHONPATH=. "${READINESS_CMD[@]}"
 
 CANDIDATE_CMD=(
-  .venv/bin/python scripts/bookgen_publish_candidate.py
+  "${PYTHON_BIN}" scripts/bookgen_publish_candidate.py
   --project-id "${PROJECT_ID}"
 )
 if [[ -n "${CHECKLIST_OUTPUT}" ]]; then
@@ -84,13 +96,13 @@ PYTHONPATH=. "${CANDIDATE_CMD[@]}"
 
 if [[ "${SKIP_EXPORT}" != "true" ]]; then
   echo "Exporting local publish bundle..."
-  PYTHONPATH=. .venv/bin/python scripts/bookgen_export_publish_bundle.py \
+  PYTHONPATH=. "${PYTHON_BIN}" scripts/bookgen_export_publish_bundle.py \
     --project-id "${PROJECT_ID}"
 fi
 
 if [[ "${SKIP_PACKAGE}" != "true" ]]; then
   echo "Packaging publish bundle..."
-  PYTHONPATH=. .venv/bin/python scripts/bookgen_package_publish_bundle.py \
+  PYTHONPATH=. "${PYTHON_BIN}" scripts/bookgen_package_publish_bundle.py \
     --project-id "${PROJECT_ID}"
 fi
 

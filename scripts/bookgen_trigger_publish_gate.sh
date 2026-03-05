@@ -68,5 +68,18 @@ if [[ "${WAIT}" != "true" ]]; then
   exit 0
 fi
 
-echo "Waiting for completion..."
-gh run watch --repo "${REPO}" --workflow bookgen-publish-gate.yml --exit-status
+echo "Resolving latest workflow run ID..."
+RUN_ID="$(gh run list \
+  --repo "${REPO}" \
+  --workflow bookgen-publish-gate.yml \
+  --limit 1 \
+  --json databaseId \
+  --jq '.[0].databaseId')"
+
+if [[ -z "${RUN_ID}" || "${RUN_ID}" == "null" ]]; then
+  echo "Could not resolve workflow run ID for bookgen-publish-gate.yml." >&2
+  exit 1
+fi
+
+echo "Waiting for completion (run ${RUN_ID})..."
+gh run watch "${RUN_ID}" --repo "${REPO}" --exit-status
