@@ -24,6 +24,7 @@ REPO=""
 REQUIRE_PROMOTION="true"
 WAIT="false"
 WORKFLOW_FILE="bookgen-publish-gate-selfhosted.yml"
+DISPATCH_RETRIES=3
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -62,18 +63,46 @@ if [[ -z "${REPO}" ]]; then
 fi
 
 echo "Dispatching workflow ${WORKFLOW_FILE} for repo ${REPO}..."
-if [[ "${WORKFLOW_FILE}" == "bookgen-publish-gate.yml" ]]; then
-  gh workflow run "${WORKFLOW_FILE}" \
-    --repo "${REPO}" \
-    -f project_id="${PROJECT_ID}" \
-    -f require_promotion="${REQUIRE_PROMOTION}" \
-    -f allow_github_hosted=true
-else
-  gh workflow run "${WORKFLOW_FILE}" \
-    --repo "${REPO}" \
-    -f project_id="${PROJECT_ID}" \
-    -f require_promotion="${REQUIRE_PROMOTION}"
-fi
+attempt=1
+while true; do
+  if [[ "${WORKFLOW_FILE}" == "bookgen-publish-gate.yml" ]]; then
+    set +e
+    out="$(
+      gh workflow run "${WORKFLOW_FILE}" \
+        --repo "${REPO}" \
+        -f project_id="${PROJECT_ID}" \
+        -f require_promotion="${REQUIRE_PROMOTION}" \
+        -f allow_github_hosted=true 2>&1
+    )"
+    rc=$?
+    set -e
+  else
+    set +e
+    out="$(
+      gh workflow run "${WORKFLOW_FILE}" \
+        --repo "${REPO}" \
+        -f project_id="${PROJECT_ID}" \
+        -f require_promotion="${REQUIRE_PROMOTION}" 2>&1
+    )"
+    rc=$?
+    set -e
+  fi
+
+  if [[ "${rc}" -eq 0 ]]; then
+    break
+  fi
+
+  if [[ "${attempt}" -lt "${DISPATCH_RETRIES}" ]] && grep -qi "HTTP 5[0-9][0-9]" <<<"${out}"; then
+    sleep_secs=$(( attempt * 2 ))
+    echo "Dispatch attempt ${attempt}/${DISPATCH_RETRIES} failed with server error; retrying in ${sleep_secs}s..."
+    sleep "${sleep_secs}"
+    attempt=$(( attempt + 1 ))
+    continue
+  fi
+
+  echo "${out}" >&2
+  exit "${rc}"
+done
 
 echo "Workflow dispatched: project_id=${PROJECT_ID}, require_promotion=${REQUIRE_PROMOTION}"
 
