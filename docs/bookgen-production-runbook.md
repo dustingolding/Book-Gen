@@ -173,8 +173,8 @@ Use GitHub Actions workflow `bookgen-publish-gate` for an isolated publish-prep 
 
 Workflows:
 
-- `bookgen-publish-gate.yml` (GitHub-hosted)
-- `bookgen-publish-gate-selfhosted.yml` (self-hosted runner; recommended for cluster-internal endpoints)
+- `bookgen-publish-gate-selfhosted.yml` (default/recommended)
+- `bookgen-publish-gate.yml` (GitHub-hosted, explicit opt-in)
 
 Required workflow input:
 
@@ -212,9 +212,9 @@ Local helper commands:
 # 3) Trigger the publish gate workflow for a project and wait for result
 ./scripts/bookgen_trigger_publish_gate.sh --project-id <project-id> --wait
 
-# 4) Trigger the self-hosted workflow variant
+# 4) Trigger GitHub-hosted variant (explicit opt-in)
 ./scripts/bookgen_trigger_publish_gate.sh \
-  --workflow bookgen-publish-gate-selfhosted.yml \
+  --github-hosted \
   --project-id <project-id> \
   --wait
 

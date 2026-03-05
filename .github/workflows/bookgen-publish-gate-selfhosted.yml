@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: bookgen-publish-gate-selfhosted-${{ inputs.project_id }}
+  cancel-in-progress: false
+
 jobs:
   publish-gate:
     runs-on: [self-hosted, linux]

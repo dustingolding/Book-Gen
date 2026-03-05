@@ -12,9 +12,18 @@ on:
         required: false
         default: true
         type: boolean
+      allow_github_hosted:
+        description: "Allow running this gate on GitHub-hosted runners"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
+
+concurrency:
+  group: bookgen-publish-gate-${{ inputs.project_id }}
+  cancel-in-progress: false
 
 jobs:
   publish-gate:
@@ -42,6 +51,14 @@ jobs:
       PREFECT_API_URL: "http://127.0.0.1:4200/api"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Guard GitHub-hosted execution
+        run: |
+          if [[ "${{ inputs.allow_github_hosted }}" != "true" ]]; then
+            echo "GitHub-hosted publish gate is disabled by default." >&2
+            echo "Use bookgen-publish-gate-selfhosted.yml, or re-dispatch with allow_github_hosted=true." >&2
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
