@@ -24,14 +24,22 @@ jobs:
       MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
       MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
       MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
-      MINIO_SECURE: ${{ secrets.MINIO_SECURE }}
+      MINIO_SECURE: "false"
       S3_BUCKET: ${{ secrets.S3_BUCKET }}
       LAKEFS_ENDPOINT: ${{ secrets.LAKEFS_ENDPOINT }}
       LAKEFS_ACCESS_KEY: ${{ secrets.LAKEFS_ACCESS_KEY }}
       LAKEFS_SECRET_KEY: ${{ secrets.LAKEFS_SECRET_KEY }}
       LAKEFS_REPOSITORY: ${{ secrets.LAKEFS_REPOSITORY }}
+      LAKEFS_REPO: ${{ secrets.LAKEFS_REPOSITORY }}
       LAKEFS_BRANCH: ${{ secrets.LAKEFS_BRANCH }}
       KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+      PG_HOST: "127.0.0.1"
+      PG_PORT: "5432"
+      PG_USER: "placeholder"
+      PG_PASSWORD: "placeholder"
+      PG_DB: "placeholder"
+      MLFLOW_TRACKING_URI: "file:///tmp/mlruns"
+      PREFECT_API_URL: "http://127.0.0.1:4200/api"
     steps:
       - uses: actions/checkout@v4
 
