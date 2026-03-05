@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.storage import ObjectStore
+from app.config import get_settings
 
 
 def utc_now() -> str:
@@ -108,6 +109,7 @@ def _build_store_with_fallback(namespace: str) -> tuple[ObjectStore, subprocess.
     if not os.getenv("MINIO_LOCAL_ENDPOINT"):
         os.environ["MINIO_LOCAL_ENDPOINT"] = "http://127.0.0.1:19000"
     pf = _start_minio_port_forward(namespace=namespace, local_port=19000)
+    get_settings.cache_clear()
     return ObjectStore(), pf
 
 
