@@ -49,7 +49,9 @@ jobs:
       LAKEFS_REPOSITORY: ${{ secrets.LAKEFS_REPOSITORY }}
       LAKEFS_REPO: ${{ secrets.LAKEFS_REPOSITORY }}
       LAKEFS_BRANCH: ${{ secrets.LAKEFS_BRANCH }}
+      LAKEFS_ENABLED: "true"
       KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+      BOOKGEN_SOURCE_DOTENV: "false"
       PG_HOST: "127.0.0.1"
       PG_PORT: "5432"
       PG_USER: "placeholder"

@@ -63,7 +63,8 @@ PYTHON_BIN=""
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
-if [[ -f ".env" ]]; then
+SOURCE_DOTENV="${BOOKGEN_SOURCE_DOTENV:-true}"
+if [[ "${SOURCE_DOTENV}" == "true" && -f ".env" ]]; then
   set -a
   # shellcheck disable=SC1091
   source ".env"
