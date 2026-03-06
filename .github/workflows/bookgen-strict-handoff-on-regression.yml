@@ -1,0 +1,63 @@
+name: bookgen-strict-handoff-on-regression
+
+on:
+  workflow_run:
+    workflows: ["bookgen-regression-gate-selfhosted"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Series target (all|closed-session|time-tinkers)"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - closed-session
+          - time-tinkers
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: bookgen-strict-handoff-on-regression
+  cancel-in-progress: false
+
+jobs:
+  strict-handoff:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: closed-session
+            project_id: closed-session-llm-pilot-003
+          - id: time-tinkers
+            project_id: time-tinkers-lab
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify gh availability
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.target == 'all' || inputs.target == matrix.id }}
+        run: gh --version
+
+      - name: Run strict handoff
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.target == 'all' || inputs.target == matrix.id }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./scripts/bookgen_release_handoff.sh \
+            --repo "${{ github.repository }}" \
+            --project-id "${{ matrix.project_id }}"
+
+      - name: Upload handoff summary
+        if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.target == 'all' || inputs.target == matrix.id) }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookgen-handoff-${{ matrix.project_id }}-${{ github.run_id }}
+          path: |
+            exports/publish-handoffs/${{ matrix.project_id }}.json
+            exports/publish-artifacts/
