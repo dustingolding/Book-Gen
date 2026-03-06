@@ -258,6 +258,7 @@ Workflow: `bookgen-nightly-integrity.yml`
 - Default project: `audit-canary-001`
 - Action: runs collect-only handoff integrity verification against latest successful self-hosted publish-gate run
 - On failure: workflow fails, uploads artifacts, and opens/updates a GitHub issue
+- On recovery: workflow auto-closes the matching open integrity issue
 
 Manual trigger:
 
