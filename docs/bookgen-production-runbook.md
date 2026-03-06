@@ -226,6 +226,11 @@ Local helper commands:
   --repo <owner>/<repo> \
   --start
 
+# 6a) Install/start runner as persistent systemd service (recommended for production)
+./scripts/bookgen_runner_service.sh \
+  --repo <owner>/<repo> \
+  ensure-online
+
 # 6b) Go-live readiness report (runner/nightly/publish-gate/project summary)
 ./scripts/bookgen_go_live_readiness.sh \
   --repo <owner>/<repo> \
