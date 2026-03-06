@@ -129,7 +129,8 @@ jobs:
             --repo "${TARGET_REPO}" \
             --image "${IMAGE}" \
             --resource-profile "${RESOURCE_PROFILE}" \
-            --llm-chapter-limit "${LLM_CHAPTER_LIMIT}"
+            --llm-chapter-limit "${LLM_CHAPTER_LIMIT}" \
+            --skip-handoff
 
       - name: Upload regression artifacts
         if: always()
