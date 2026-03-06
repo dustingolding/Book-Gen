@@ -2,7 +2,9 @@ name: bookgen-strict-handoff-on-regression
 
 on:
   workflow_run:
-    workflows: ["bookgen-regression-gate-selfhosted"]
+    workflows:
+      - "bookgen-regression-gate-selfhosted"
+      - "bookgen-weekly-6chapter-gate-selfhosted"
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -20,6 +22,7 @@ on:
 permissions:
   contents: read
   actions: write
+  issues: write
 
 concurrency:
   group: bookgen-strict-handoff-on-regression
@@ -62,3 +65,88 @@ jobs:
           path: |
             exports/publish-handoffs/${{ matrix.project_id }}.json
             exports/publish-artifacts/
+
+  handoff-alerts:
+    if: always()
+    needs: strict-handoff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open/update strict handoff failure issue
+        if: ${{ needs.strict-handoff.result == 'failure' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "BookGen strict handoff failed";
+            const body = [
+              "Downstream strict handoff workflow failed.",
+              "",
+              `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              `Workflow: ${context.workflow}`,
+              "",
+              "Action needed: inspect publish-gate workflow dispatch + artifact checksum/handoff collection."
+            ].join("\n");
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              per_page: 100
+            });
+            const existing = issues.find((i) => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ["bookgen", "handoff", "ops"]
+              });
+            }
+
+      - name: Auto-close strict handoff failure issue on recovery
+        if: ${{ needs.strict-handoff.result == 'success' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "BookGen strict handoff failed";
+            const body = [
+              "Strict handoff workflow recovered.",
+              "",
+              `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              "Result: success",
+              "",
+              "Closing this issue automatically."
+            ].join("\n");
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              per_page: 100
+            });
+            const existing = issues.find((i) => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: "closed"
+              });
+            }
