@@ -25,14 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run collect-only handoff integrity check
+      - name: Run strict handoff integrity check
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           ./scripts/bookgen_release_handoff.sh \
             --repo "${REPO_NAME}" \
             --project-id "${PROJECT_ID}" \
-            --collect-only
+            --skip-runner-check
 
       - name: Upload nightly integrity artifacts
         if: always()
