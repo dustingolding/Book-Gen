@@ -214,9 +214,6 @@ ensure_minio_local_connectivity() {
   local local_endpoint="${MINIO_LOCAL_ENDPOINT:-http://127.0.0.1:19000}"
   local host
   host="$(endpoint_host "${endpoint}")"
-  if [[ "${host}" != *.svc.cluster.local ]]; then
-    return
-  fi
   if host_resolvable "${host}"; then
     return
   fi
@@ -254,9 +251,6 @@ ensure_lakefs_local_connectivity() {
   local local_endpoint="${LAKEFS_LOCAL_ENDPOINT:-http://127.0.0.1:18000}"
   local host
   host="$(endpoint_host "${endpoint}")"
-  if [[ "${host}" != *.svc.cluster.local ]]; then
-    return
-  fi
   if host_resolvable "${host}"; then
     return
   fi
