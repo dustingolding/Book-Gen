@@ -226,6 +226,11 @@ Local helper commands:
   --repo <owner>/<repo> \
   --start
 
+# 6b) Go-live readiness report (runner/nightly/publish-gate/project summary)
+./scripts/bookgen_go_live_readiness.sh \
+  --repo <owner>/<repo> \
+  --project-id <project-id>
+
 # 7) Download and verify publish artifact from latest successful self-hosted run
 #    (verifies both package SHA256SUMS and unpacked BUNDLE_SHA256SUMS)
 ./scripts/bookgen_collect_publish_artifact.sh \
