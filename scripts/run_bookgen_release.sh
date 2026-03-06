@@ -58,6 +58,7 @@ JOB_NAME=""
 POD_NAME=""
 NODE_NAME=""
 PROMOTED_REF=""
+PYTHON_BIN=""
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
@@ -107,6 +108,23 @@ cleanup() {
   done
 }
 trap cleanup EXIT
+
+resolve_python_bin() {
+  if [[ -x ".venv/bin/python" ]]; then
+    PYTHON_BIN=".venv/bin/python"
+    return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+    return
+  fi
+  if command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="python"
+    return
+  fi
+  echo "No Python interpreter found (.venv/bin/python, python3, or python)." >&2
+  exit 1
+}
 
 endpoint_host() {
   local endpoint="$1"
@@ -298,8 +316,9 @@ if [[ "${ALLOW_CONCURRENT}" != "true" ]]; then
 fi
 
 ensure_minio_local_connectivity
+resolve_python_bin
 
-UPLOAD_CMD=(.venv/bin/python scripts/upload_bookgen_input.py --project-id "${PROJECT_ID}" --input-path "${INPUT_PATH}")
+UPLOAD_CMD=("${PYTHON_BIN}" scripts/upload_bookgen_input.py --project-id "${PROJECT_ID}" --input-path "${INPUT_PATH}")
 if [[ -n "${OBJECT_KEY}" ]]; then
   UPLOAD_CMD+=(--object-key "${OBJECT_KEY}")
 fi
@@ -350,7 +369,7 @@ if [[ "${PROMOTE}" == "true" ]]; then
   REQUIRED_ASSEMBLY_KEY="runs/${PROJECT_ID}/meta/stages/assembly-export.json"
   REQUIRED_ASSEMBLY_ARTIFACTS_KEY="runs/${PROJECT_ID}/meta/stages/assembly-export.artifacts.json"
   PROMOTE_CMD=(
-    .venv/bin/python scripts/promote_bookgen_branch.py
+    "${PYTHON_BIN}" scripts/promote_bookgen_branch.py
     --project-id "${PROJECT_ID}"
     --dest-branch "${PROMOTE_DEST_BRANCH}"
     --require-object-path "${REQUIRED_ASSEMBLY_KEY}"
@@ -365,7 +384,7 @@ if [[ "${PROMOTE}" == "true" ]]; then
     PROMOTE_OUTPUT="$(PYTHONPATH=. "${PROMOTE_CMD[@]}")"
     printf '%s\n' "${PROMOTE_OUTPUT}"
     PROMOTED_REF="$(
-      printf '%s' "${PROMOTE_OUTPUT}" | .venv/bin/python -c 'import json,sys
+      printf '%s' "${PROMOTE_OUTPUT}" | "${PYTHON_BIN}" -c 'import json,sys
 s=sys.stdin.read().strip()
 try:
     obj=json.loads(s)
@@ -380,7 +399,7 @@ fi
 RELEASE_FINISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 AUDIT_CMD=(
-  .venv/bin/python scripts/write_release_audit.py
+  "${PYTHON_BIN}" scripts/write_release_audit.py
   --project-id "${PROJECT_ID}"
   --run-date "${RUN_DATE}"
   --bookspec-key "${OBJECT_KEY}"
