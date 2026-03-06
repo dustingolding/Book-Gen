@@ -222,6 +222,8 @@ def test_bookgen_pipeline_end_to_end(monkeypatch):
     assert export_manifest["categories"] == metadata_pack["categories"]
     assert all(not str(item).endswith(".") for item in metadata_pack["keywords"])
     assert "setup" not in metadata_pack["categories"]
+    assert "setup" not in metadata_pack["keywords"]
+    assert " in the The " not in metadata_pack["blurb"]
     assert any(key.endswith("constitution.yaml") for key in backing)
     assert any(key.endswith("chapter_pack.yaml") for key in backing)
     assert any(key.endswith("scene_cards.yaml") for key in backing)

@@ -4131,7 +4131,8 @@ def _blurb(constitution: dict[str, Any], installment_pack: dict[str, Any]) -> st
     summary = _normalize_sentence(str(installment_pack["intent"]["summary"]))
     theme = _normalize_sentence(f"The central pressure is {_clean_metadata_phrase(installment_pack['theme_expression']['primary_focus'], lowercase=True)}")
 
-    opening = f"{title} is a {subgenre} installment in the {series_title} series."
+    series_clause = f"in {series_title} series." if series_title.lower().startswith("the ") else f"in the {series_title} series."
+    opening = f"{title} is a {subgenre} installment {series_clause}"
     if theme and _clean_metadata_phrase(installment_pack["theme_expression"]["primary_focus"], lowercase=True) in summary.lower():
         return f"{opening} {summary}"
     return f"{opening} {summary} {theme}"
@@ -4204,7 +4205,9 @@ def _metadata_pack(*, constitution: dict[str, Any], installment_pack: dict[str, 
             if term not in stopwords
         }
     )
-    keywords = _dedupe_text([genre, subgenre, role, audience, theme] + long_tail[:12])
+    role_keyword_blocklist = {"entry", "setup", "escalation", "breach", "reckoning", "exposure"}
+    role_keyword = role if role not in role_keyword_blocklist else ""
+    keywords = _dedupe_text([genre, subgenre, role_keyword, audience, theme] + long_tail[:12])
     audience_category = {
         "kids": "children fiction",
         "ya": "young adult fiction",
