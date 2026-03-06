@@ -60,17 +60,16 @@ case "${MODE}" in
 esac
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORKSPACE_ROOT="$(cd "${ROOT_DIR}/.." && pwd)"
 cd "${ROOT_DIR}"
 
 case "${SERIES}" in
   closed-session)
     PROJECT_ID="closed-session-llm-pilot-003"
-    INPUT_PATH="${WORKSPACE_ROOT}/The Closed Session Input.md"
+    INPUT_PATH="${ROOT_DIR}/docs/bookgen/bookspec.closed-session-llm-pilot-003.json"
     ;;
   time-tinkers)
     PROJECT_ID="time-tinkers-lab"
-    INPUT_PATH="${WORKSPACE_ROOT}/Second Series Input.yaml"
+    INPUT_PATH="${ROOT_DIR}/docs/bookgen/bookspec.time-tinkers-lab.json"
     ;;
   *)
     echo "--series must be one of: closed-session, time-tinkers." >&2

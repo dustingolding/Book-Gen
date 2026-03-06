@@ -1,0 +1,110 @@
+{
+  "project_id": "time-tinkers-lab",
+  "title": "The Time-Tinkers' Lab",
+  "series_title": "The Time-Tinkers' Lab",
+  "genre": "juvenile fiction",
+  "subgenre": "middle-grade STEM time travel adventure",
+  "target_audience": "kids",
+  "tone": "Fast-moving middle-grade adventure with curiosity, discovery, and scientific wonder.",
+  "themes": [
+    "Curiosity and responsibility must guide the use of knowledge.",
+    "Innovation often comes from experimentation and failure."
+  ],
+  "word_count_target": 55000,
+  "chapter_count": 3,
+  "chapter_word_target": 3000,
+  "planned_series_length": 5,
+  "installment_id": "book-01",
+  "installment_index": 1,
+  "pov": "third_limited",
+  "protagonist_goal": "Understand the Chrono-Engine and protect history from timeline manipulation.",
+  "core_conflict": "Every jump through time forces the team to solve scientific problems while rivals alter key historical events.",
+  "stakes": "If the team fails, timeline instability will cascade into a damaged future.",
+  "narrative_role": "setup",
+  "stakes_level": "high",
+  "output_formats": [
+    "md",
+    "docx",
+    "epub",
+    "pdf"
+  ],
+  "characters": [
+    {
+      "name": "Maya",
+      "role": "protagonist",
+      "immutable_traits": [
+        "curious",
+        "brave"
+      ],
+      "mutable_traits": [
+        "confidence"
+      ],
+      "dialogue_tics": [
+        "asks questions"
+      ],
+      "start_state": "curious but uncertain",
+      "end_state": "confident leader"
+    },
+    {
+      "name": "Theo",
+      "role": "supporting"
+    }
+  ],
+  "setting_rules": [
+    "Time travel occurs only through the Chrono-Engine.",
+    "Historical science remains plausible and age-appropriate.",
+    "No magic shortcuts for scientific problem solving."
+  ],
+  "series_title_strategy": {
+    "naming_family": "scientific discovery and invention phrases",
+    "tonal_requirements": [
+      "adventurous",
+      "curious",
+      "credible"
+    ],
+    "avoid": [
+      "spy thriller language",
+      "military jargon",
+      "overly metaphorical titles"
+    ]
+  },
+  "installment_title_briefs": [
+    {
+      "installment_id": "book-01",
+      "installment_index": 1,
+      "title_function": "entry",
+      "story_beat": "Chrono-Engine discovery",
+      "stakes_level": "high"
+    },
+    {
+      "installment_id": "book-02",
+      "installment_index": 2,
+      "title_function": "escalation",
+      "story_beat": "rival interference",
+      "stakes_level": "high"
+    },
+    {
+      "installment_id": "book-03",
+      "installment_index": 3,
+      "title_function": "breach",
+      "story_beat": "timeline fracture",
+      "stakes_level": "high"
+    },
+    {
+      "installment_id": "book-04",
+      "installment_index": 4,
+      "title_function": "reckoning",
+      "story_beat": "countermeasure build",
+      "stakes_level": "high"
+    },
+    {
+      "installment_id": "book-05",
+      "installment_index": 5,
+      "title_function": "exposure",
+      "story_beat": "future restored",
+      "stakes_level": "high"
+    }
+  ],
+  "prompt_pack_version": "v1",
+  "rubric_version": "v1"
+}
