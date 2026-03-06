@@ -1,0 +1,194 @@
+name: bookgen-regression-gate-selfhosted
+
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+    inputs:
+      llm_chapter_limit:
+        description: "Bounded LLM chapter limit per series (default: 1)"
+        required: false
+        default: "1"
+        type: string
+      resource_profile:
+        description: "Kubernetes resource profile (light|standard|heavy)"
+        required: false
+        default: "light"
+        type: string
+      image:
+        description: "Pinned runtime image tag (default frozen baseline)"
+        required: false
+        default: "ghcr.io/dustingolding/slw-dailycast-base:git-b1a801f-20260306163947"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: bookgen-regression-gate-selfhosted
+  cancel-in-progress: false
+
+jobs:
+  regression-gate:
+    runs-on: [self-hosted, linux]
+    env:
+      IMAGE: ${{ inputs.image != '' && inputs.image || 'ghcr.io/dustingolding/slw-dailycast-base:git-b1a801f-20260306163947' }}
+      LLM_CHAPTER_LIMIT: ${{ inputs.llm_chapter_limit != '' && inputs.llm_chapter_limit || '1' }}
+      RESOURCE_PROFILE: ${{ inputs.resource_profile != '' && inputs.resource_profile || 'light' }}
+      TARGET_REPO: ${{ github.repository }}
+      MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
+      MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+      MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+      MINIO_SECURE: "false"
+      S3_BUCKET: "slw-dailycast"
+      LAKEFS_ENDPOINT: ${{ secrets.LAKEFS_ENDPOINT }}
+      LAKEFS_ACCESS_KEY: ${{ secrets.LAKEFS_ACCESS_KEY }}
+      LAKEFS_SECRET_KEY: ${{ secrets.LAKEFS_SECRET_KEY }}
+      LAKEFS_REPOSITORY: ${{ secrets.LAKEFS_REPOSITORY }}
+      LAKEFS_REPO: ${{ secrets.LAKEFS_REPOSITORY }}
+      LAKEFS_BRANCH: ${{ secrets.LAKEFS_BRANCH }}
+      KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+      PG_HOST: "127.0.0.1"
+      PG_PORT: "5432"
+      PG_USER: "placeholder"
+      PG_PASSWORD: "placeholder"
+      PG_DB: "placeholder"
+      MLFLOW_TRACKING_URI: "file:///tmp/mlruns"
+      PREFECT_API_URL: "http://127.0.0.1:4200/api"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig (optional)
+        if: ${{ env.KUBE_CONFIG_B64 != '' }}
+        run: |
+          mkdir -p ~/.kube
+          echo "${KUBE_CONFIG_B64}" | base64 -d > ~/.kube/config
+
+      - name: Load MinIO credentials from cluster secret (self-hosted)
+        run: |
+          if [[ -f "${HOME}/.kube/config" ]]; then
+            ak="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.MINIO_ACCESS_KEY}' | base64 -d | tr -d '\r\n')"
+            sk="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.MINIO_SECRET_KEY}' | base64 -d | tr -d '\r\n')"
+            if [[ -n "${ak}" && -n "${sk}" ]]; then
+              {
+                echo "MINIO_ACCESS_KEY=${ak}"
+                echo "MINIO_SECRET_KEY=${sk}"
+              } >> "${GITHUB_ENV}"
+            else
+              echo "MinIO credentials in Kubernetes secret are empty." >&2
+              exit 1
+            fi
+          fi
+
+      - name: Run cross-series regression gate
+        run: |
+          ./scripts/bookgen_regression_gate.sh \
+            --repo "${TARGET_REPO}" \
+            --image "${IMAGE}" \
+            --resource-profile "${RESOURCE_PROFILE}" \
+            --llm-chapter-limit "${LLM_CHAPTER_LIMIT}"
+
+      - name: Upload regression artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookgen-regression-gate-${{ github.run_id }}
+          path: |
+            exports/publish-handoffs/closed-session-llm-pilot-003.json
+            exports/publish-handoffs/time-tinkers-lab.json
+            exports/publish-artifacts/
+
+      - name: Open/update regression failure issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "BookGen regression gate failed";
+            const body = [
+              "Cross-series BookGen regression gate failed.",
+              "",
+              `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              `Workflow: ${context.workflow}`,
+              "",
+              "Action needed: inspect release + strict handoff logs for both series and resolve before further promotion."
+            ].join("\n");
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              per_page: 100
+            });
+            const existing = issues.find((i) => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ["bookgen", "regression", "ops"]
+              });
+            }
+
+      - name: Auto-close regression failure issue on recovery
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "BookGen regression gate failed";
+            const body = [
+              "Regression gate recovered.",
+              "",
+              `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              "Result: success",
+              "",
+              "Closing this issue automatically."
+            ].join("\n");
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              per_page: 100
+            });
+            const existing = issues.find((i) => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: "closed"
+              });
+            }

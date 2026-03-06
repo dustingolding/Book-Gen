@@ -20,6 +20,7 @@ Optional:
   --resource-profile <light|standard|heavy>(default: light)
   --bookgen-use-llm <true|false>           (default: true)
   --bookgen-llm-chapter-limit <int>        (default: 1)
+  --bookgen-allow-lock-override <true|false> (default: false)
   --llm-timeout-seconds <int>              (default: 60)
   --llm-max-retries <int>                  (default: 2)
   --wait-timeout-seconds <int>             (default: 43200)
@@ -41,6 +42,7 @@ IMAGE=""
 RESOURCE_PROFILE="light"
 BOOKGEN_USE_LLM="true"
 BOOKGEN_LLM_CHAPTER_LIMIT="1"
+BOOKGEN_ALLOW_LOCK_OVERRIDE="false"
 LLM_TIMEOUT_SECONDS="60"
 LLM_MAX_RETRIES="2"
 WAIT_TIMEOUT_SECONDS="43200"
@@ -78,6 +80,7 @@ while [[ $# -gt 0 ]]; do
     --resource-profile) RESOURCE_PROFILE="$2"; shift 2 ;;
     --bookgen-use-llm) BOOKGEN_USE_LLM="$2"; shift 2 ;;
     --bookgen-llm-chapter-limit) BOOKGEN_LLM_CHAPTER_LIMIT="$2"; shift 2 ;;
+    --bookgen-allow-lock-override) BOOKGEN_ALLOW_LOCK_OVERRIDE="$2"; shift 2 ;;
     --llm-timeout-seconds) LLM_TIMEOUT_SECONDS="$2"; shift 2 ;;
     --llm-max-retries) LLM_MAX_RETRIES="$2"; shift 2 ;;
     --wait-timeout-seconds) WAIT_TIMEOUT_SECONDS="$2"; shift 2 ;;
@@ -321,6 +324,7 @@ JOB_CMD=(
   --resource-profile "${RESOURCE_PROFILE}"
   --bookgen-use-llm "${BOOKGEN_USE_LLM}"
   --bookgen-llm-chapter-limit "${BOOKGEN_LLM_CHAPTER_LIMIT}"
+  --bookgen-allow-lock-override "${BOOKGEN_ALLOW_LOCK_OVERRIDE}"
   --llm-timeout-seconds "${LLM_TIMEOUT_SECONDS}"
   --llm-max-retries "${LLM_MAX_RETRIES}"
   --wait-timeout-seconds "${WAIT_TIMEOUT_SECONDS}"

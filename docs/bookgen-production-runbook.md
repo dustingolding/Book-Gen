@@ -1,5 +1,39 @@
 # BookGen Production Runbook
 
+## Frozen Baseline
+
+Current production pinned runtime image:
+
+- `ghcr.io/dustingolding/slw-dailycast-base:git-b1a801f-20260306163947`
+
+Do not use mutable `:latest` for production validation or publish handoff.
+
+## Standard Series Commands
+
+Run a known series with frozen defaults, promotion, and strict handoff:
+
+```bash
+./scripts/bookgen_series_release.sh --series closed-session --mode bounded
+./scripts/bookgen_series_release.sh --series time-tinkers --mode bounded
+```
+
+Run full-series generation with strict handoff:
+
+```bash
+./scripts/bookgen_series_release.sh --series closed-session --mode full
+./scripts/bookgen_series_release.sh --series time-tinkers --mode full
+```
+
+## Regression Gate
+
+Before model/prompt/policy/image changes, run bounded strict checks for both series:
+
+```bash
+./scripts/bookgen_regression_gate.sh
+```
+
+This is the required pre-promotion regression path.
+
 ## Standard Release
 
 Run a production release with preflight, Kubernetes execution, and promotion:
@@ -37,6 +71,62 @@ Check cluster/service readiness without running generation:
 
 ```bash
 ./scripts/bookgen_preflight.sh --namespace sideline-wire-dailycast --require-ops-worker
+```
+
+## Local Bounded Run + Analytics
+
+Run a local bounded BookGen execution and print analytics summary in one command:
+
+```bash
+./scripts/bookgen_local_run.sh \
+  --project-id <project-id> \
+  --bookspec-path docs/bookgen/bookspec.phase5-smoke.json \
+  --analytics-report-path exports/analytics/<project-id>.json
+```
+
+Notes:
+
+- Starts MinIO port-forward automatically unless `--no-port-forward` is used.
+- Uses conservative local defaults (`BOOKGEN_USE_LLM=false`, `LAKEFS_ENABLED=false`) unless overridden.
+- Intended for controlled local validation only.
+
+## In-Cluster Job Template
+
+Use the template manifest for direct in-cluster BookGen + analytics runs:
+
+```bash
+kubectl apply -f k8s/jobs/bookgen-run-and-analytics-job.yaml
+```
+
+Before apply, set:
+
+- `PROJECT_ID`
+- `RUN_DATE`
+- `BOOKSPEC_KEY`
+
+Recommended for production: use `scripts/run_bookgen_k8s_job.sh`, which handles naming, resource profile, and wait/log helpers.
+
+## Image Parity (Important)
+
+If cluster jobs fail with missing CLI commands or outdated behavior, publish a pinned image tag from current repo code:
+
+```bash
+./scripts/bookgen_publish_image.sh \
+  --project-id <project-id> \
+  --bookspec-key inputs/<project-id>/bookspec.json
+```
+
+Then use the printed `--image ghcr.io/...:git-...` value with `run_bookgen_k8s_job.sh`.
+Avoid relying on mutable `:latest` for production runs.
+
+To run BookGen in-cluster and print analytics report at job end:
+
+```bash
+./scripts/run_bookgen_k8s_job.sh \
+  --project-id <project-id> \
+  --bookspec-key inputs/<project-id>/bookspec.json \
+  --with-analytics-report true \
+  --wait
 ```
 
 ## Failure Triage

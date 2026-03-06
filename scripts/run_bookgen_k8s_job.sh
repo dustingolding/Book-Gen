@@ -21,6 +21,9 @@ Optional:
   --bookgen-llm-chapter-limit <int>        (default: 0)
   --bookgen-eval-use-llm <true|false>      (default: false)
   --bookgen-rewrite-use-llm <true|false>   (default: false)
+  --bookgen-allow-lock-override <true|false> (default: false)
+  --with-analytics-report <true|false>     (default: false)
+  --lakefs-enabled <true|false>            (default: inherited from cluster env)
   --llm-timeout-seconds <int>              (default: 60)
   --llm-max-retries <int>                  (default: 2)
   --resource-profile <light|standard|heavy>(default: standard)
@@ -49,6 +52,9 @@ BOOKGEN_USE_LLM="true"
 BOOKGEN_LLM_CHAPTER_LIMIT="0"
 BOOKGEN_EVAL_USE_LLM="false"
 BOOKGEN_REWRITE_USE_LLM="false"
+BOOKGEN_ALLOW_LOCK_OVERRIDE="false"
+WITH_ANALYTICS_REPORT="false"
+LAKEFS_ENABLED_OVERRIDE=""
 LLM_TIMEOUT_SECONDS="60"
 LLM_MAX_RETRIES="2"
 CPU_REQUEST="500m"
@@ -79,6 +85,9 @@ while [[ $# -gt 0 ]]; do
     --bookgen-llm-chapter-limit) BOOKGEN_LLM_CHAPTER_LIMIT="$2"; shift 2 ;;
     --bookgen-eval-use-llm) BOOKGEN_EVAL_USE_LLM="$2"; shift 2 ;;
     --bookgen-rewrite-use-llm) BOOKGEN_REWRITE_USE_LLM="$2"; shift 2 ;;
+    --bookgen-allow-lock-override) BOOKGEN_ALLOW_LOCK_OVERRIDE="$2"; shift 2 ;;
+    --with-analytics-report) WITH_ANALYTICS_REPORT="$2"; shift 2 ;;
+    --lakefs-enabled) LAKEFS_ENABLED_OVERRIDE="$2"; shift 2 ;;
     --llm-timeout-seconds) LLM_TIMEOUT_SECONDS="$2"; shift 2 ;;
     --llm-max-retries) LLM_MAX_RETRIES="$2"; shift 2 ;;
     --resource-profile) RESOURCE_PROFILE="$2"; shift 2 ;;
@@ -127,6 +136,19 @@ if [[ -z "${PROJECT_ID}" || -z "${BOOKSPEC_KEY}" ]]; then
 fi
 
 apply_resource_profile_defaults
+
+if [[ "${WITH_ANALYTICS_REPORT}" != "true" && "${WITH_ANALYTICS_REPORT}" != "false" ]]; then
+  echo "--with-analytics-report must be true or false."
+  exit 1
+fi
+if [[ "${BOOKGEN_ALLOW_LOCK_OVERRIDE}" != "true" && "${BOOKGEN_ALLOW_LOCK_OVERRIDE}" != "false" ]]; then
+  echo "--bookgen-allow-lock-override must be true or false."
+  exit 1
+fi
+if [[ -n "${LAKEFS_ENABLED_OVERRIDE}" ]] && [[ "${LAKEFS_ENABLED_OVERRIDE}" != "true" && "${LAKEFS_ENABLED_OVERRIDE}" != "false" ]]; then
+  echo "--lakefs-enabled must be true or false."
+  exit 1
+fi
 
 pick_existing() {
   local kind="$1"
@@ -180,6 +202,24 @@ if [[ -z "${JOB_NAME}" ]]; then
   JOB_NAME="bookgen-${SAFE_PROJECT_ID}-$(date -u +%s)"
 fi
 
+BOOKGEN_JOB_COMMAND='python -m app.cli bookgen \
+  --project-id "${PROJECT_ID}" \
+  --run-date "${RUN_DATE}" \
+  --bookspec-key "${BOOKSPEC_KEY}"'
+if [[ "${WITH_ANALYTICS_REPORT}" == "true" ]]; then
+  BOOKGEN_JOB_COMMAND="${BOOKGEN_JOB_COMMAND}
+python -m app.cli bookgen-analytics-report --project-id \"\${PROJECT_ID}\""
+fi
+BOOKGEN_JOB_COMMAND_BLOCK="$(printf '%s\n' "${BOOKGEN_JOB_COMMAND}" | sed 's/^/              /')"
+LAKEFS_ENV_BLOCK=""
+if [[ -n "${LAKEFS_ENABLED_OVERRIDE}" ]]; then
+  LAKEFS_ENV_BLOCK="$(cat <<EOF
+            - name: LAKEFS_ENABLED
+              value: "${LAKEFS_ENABLED_OVERRIDE}"
+EOF
+)"
+fi
+
 TMP_MANIFEST="$(mktemp)"
 trap 'rm -f "${TMP_MANIFEST}"' EXIT
 
@@ -230,10 +270,7 @@ spec:
           command: ["sh", "-lc"]
           args:
             - |
-              python -m app.cli bookgen \
-                --project-id "\${PROJECT_ID}" \
-                --run-date "\${RUN_DATE}" \
-                --bookspec-key "\${BOOKSPEC_KEY}"
+${BOOKGEN_JOB_COMMAND_BLOCK}
           envFrom:
             - secretRef:
                 name: ${SECRET_NAME}
@@ -254,6 +291,8 @@ spec:
               value: "${BOOKGEN_EVAL_USE_LLM}"
             - name: BOOKGEN_REWRITE_USE_LLM
               value: "${BOOKGEN_REWRITE_USE_LLM}"
+            - name: BOOKGEN_ALLOW_LOCK_OVERRIDE
+              value: "${BOOKGEN_ALLOW_LOCK_OVERRIDE}"
             - name: BOOKGEN_EVAL_LLM_CHAPTER_LIMIT
               value: "0"
             - name: BOOKGEN_REWRITE_LLM_CHAPTER_LIMIT
@@ -262,6 +301,7 @@ spec:
               value: "${LLM_TIMEOUT_SECONDS}"
             - name: LLM_MAX_RETRIES
               value: "${LLM_MAX_RETRIES}"
+${LAKEFS_ENV_BLOCK}
           resources:
             requests:
               cpu: ${CPU_REQUEST}
