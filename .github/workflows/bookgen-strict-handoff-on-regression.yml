@@ -51,7 +51,8 @@ jobs:
         run: |
           ./scripts/bookgen_release_handoff.sh \
             --repo "${{ github.repository }}" \
-            --project-id "${{ matrix.project_id }}"
+            --project-id "${{ matrix.project_id }}" \
+            --skip-runner-check
 
       - name: Upload handoff summary
         if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.target == 'all' || inputs.target == matrix.id) }}
