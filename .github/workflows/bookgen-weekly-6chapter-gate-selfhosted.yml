@@ -131,6 +131,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bookgen-weekly-6chapter-gate-${{ github.run_id }}
+          if-no-files-found: ignore
           path: |
             exports/publish-handoffs/closed-session-llm-pilot-003.json
             exports/publish-handoffs/time-tinkers-lab.json
