@@ -5078,10 +5078,13 @@ def run_chapter_drafting(*, project_id: str) -> dict[str, Any]:
         generation_trace_key = f"{root}/generation_trace.yaml"
         draft_key = f"{root}/draft.md"
         if store.exists(chapter_pack_key) and store.exists(draft_key) and store.exists(draft_qc_key):
-            if store.exists(generation_trace_key):
-                generation_traces.append(_read_yaml(store, generation_trace_key))
-            skipped += 1
-            continue
+            existing_draft_qc = _read_yaml(store, draft_qc_key)
+            existing_pass = str(existing_draft_qc.get("pass_status", "FAIL")).strip().upper() == "PASS"
+            if existing_pass:
+                if store.exists(generation_trace_key):
+                    generation_traces.append(_read_yaml(store, generation_trace_key))
+                skipped += 1
+                continue
         chapter_pack = _build_chapter_pack(
             project_id=project_id,
             constitution=constitution,

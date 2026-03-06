@@ -1935,6 +1935,130 @@ def test_mlflow_log_skips_when_tracking_uri_unreachable(monkeypatch):
     assert called["set_tracking_uri"] == 0
 
 
+def test_run_chapter_drafting_skips_existing_when_draft_qc_pass(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(root)
+
+    backing: dict[str, bytes] = {}
+    monkeypatch.setattr(bookgen, "ObjectStore", lambda: MemoryStore(backing))
+    monkeypatch.setattr(bookgen, "_commit_stage_checkpoint", lambda **kwargs: None)
+    monkeypatch.setattr(bookgen, "_log_mlflow_summary", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        bookgen,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bookgen_generation_preset="smoke",
+            bookgen_use_llm=False,
+            bookgen_llm_chapter_limit=0,
+            bookgen_eval_use_llm=False,
+            bookgen_eval_llm_chapter_limit=0,
+            bookgen_rewrite_use_llm=False,
+            bookgen_rewrite_llm_chapter_limit=0,
+            bookgen_structural_retry_limit=0,
+            bookgen_title_critic_use_llm=False,
+            bookgen_title_critic_shortlist_size=5,
+            llm_endpoint=None,
+            mlflow_tracking_uri="http://127.0.0.1:15000",
+            mlflow_local_tracking_uri="http://127.0.0.1:15000",
+        ),
+    )
+
+    project_id = "demo-thriller-skip-pass-001"
+    bookspec = json.loads((root / "docs/bookgen/bookspec.sample.json").read_text(encoding="utf-8"))
+    bookspec["chapter_count"] = 1
+    backing[f"inputs/{project_id}/bookspec.json"] = json.dumps(bookspec).encode("utf-8")
+    backing["prompt-packs/thriller/v1/manifest.json"] = json.dumps(
+        {"genre": "thriller", "version": "v1", "structure": {"acts": 3}}
+    ).encode("utf-8")
+    backing["rubrics/thriller/v1/rubric.json"] = json.dumps(
+        {
+            "genre": "thriller",
+            "version": "v1",
+            "chapter_min_words": 120,
+            "pass_overall": 7.0,
+            "hard_fail": [
+                {"category": "world_rule_compliance", "min_score": 7.0},
+                {"category": "character_consistency", "min_score": 7.0},
+            ],
+        }
+    ).encode("utf-8")
+
+    intake = bookgen.run_intake(project_id=project_id, run_date="2026-03-06")
+    resolved = bookgen.run_prompt_pack_resolve(intake=intake)
+    bookgen.run_bible_outline(intake=intake, resolved=resolved)
+    first = bookgen.run_chapter_drafting(project_id=project_id)
+    second = bookgen.run_chapter_drafting(project_id=project_id)
+
+    assert first["drafted"] == 1
+    assert second["drafted"] == 0
+    assert second["skipped_existing"] == 1
+
+
+def test_run_chapter_drafting_regenerates_existing_when_draft_qc_failed(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(root)
+
+    backing: dict[str, bytes] = {}
+    monkeypatch.setattr(bookgen, "ObjectStore", lambda: MemoryStore(backing))
+    monkeypatch.setattr(bookgen, "_commit_stage_checkpoint", lambda **kwargs: None)
+    monkeypatch.setattr(bookgen, "_log_mlflow_summary", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        bookgen,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bookgen_generation_preset="smoke",
+            bookgen_use_llm=False,
+            bookgen_llm_chapter_limit=0,
+            bookgen_eval_use_llm=False,
+            bookgen_eval_llm_chapter_limit=0,
+            bookgen_rewrite_use_llm=False,
+            bookgen_rewrite_llm_chapter_limit=0,
+            bookgen_structural_retry_limit=0,
+            bookgen_title_critic_use_llm=False,
+            bookgen_title_critic_shortlist_size=5,
+            llm_endpoint=None,
+            mlflow_tracking_uri="http://127.0.0.1:15000",
+            mlflow_local_tracking_uri="http://127.0.0.1:15000",
+        ),
+    )
+
+    project_id = "demo-thriller-rerun-fail-001"
+    bookspec = json.loads((root / "docs/bookgen/bookspec.sample.json").read_text(encoding="utf-8"))
+    bookspec["chapter_count"] = 1
+    backing[f"inputs/{project_id}/bookspec.json"] = json.dumps(bookspec).encode("utf-8")
+    backing["prompt-packs/thriller/v1/manifest.json"] = json.dumps(
+        {"genre": "thriller", "version": "v1", "structure": {"acts": 3}}
+    ).encode("utf-8")
+    backing["rubrics/thriller/v1/rubric.json"] = json.dumps(
+        {
+            "genre": "thriller",
+            "version": "v1",
+            "chapter_min_words": 120,
+            "pass_overall": 7.0,
+            "hard_fail": [
+                {"category": "world_rule_compliance", "min_score": 7.0},
+                {"category": "character_consistency", "min_score": 7.0},
+            ],
+        }
+    ).encode("utf-8")
+
+    intake = bookgen.run_intake(project_id=project_id, run_date="2026-03-06")
+    resolved = bookgen.run_prompt_pack_resolve(intake=intake)
+    planning = bookgen.run_bible_outline(intake=intake, resolved=resolved)
+    first = bookgen.run_chapter_drafting(project_id=project_id)
+
+    draft_qc_key = f"bookgen/{project_id}/installments/{planning['installment_id']}/chapters/ch-01/draft_qc.yaml"
+    failed_qc = yaml.safe_load(backing[draft_qc_key].decode("utf-8"))
+    failed_qc["pass_status"] = "FAIL"
+    backing[draft_qc_key] = yaml.safe_dump(failed_qc, sort_keys=False).encode("utf-8")
+
+    second = bookgen.run_chapter_drafting(project_id=project_id)
+
+    assert first["drafted"] == 1
+    assert second["drafted"] == 1
+    assert second["skipped_existing"] == 0
+
+
 def test_mlflow_log_runs_when_tracking_uri_reachable(monkeypatch):
     monkeypatch.setattr(
         bookgen,
