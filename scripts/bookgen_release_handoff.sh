@@ -60,11 +60,6 @@ fi
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
-if [[ "${COLLECT_ONLY}" == "true" && -z "${RUN_ID}" ]]; then
-  echo "--run-id is required when --collect-only is used." >&2
-  exit 1
-fi
-
 if [[ "${COLLECT_ONLY}" != "true" ]]; then
   ./scripts/bookgen_trigger_publish_gate.sh \
     --repo "${REPO}" \
@@ -82,8 +77,16 @@ if [[ "${COLLECT_ONLY}" != "true" ]]; then
 fi
 
 if [[ -z "${RUN_ID}" ]]; then
-  echo "Could not resolve successful run ID." >&2
-  exit 1
+  RUN_ID="$(gh run list \
+    --repo "${REPO}" \
+    --workflow "${WORKFLOW_FILE}" \
+    --limit 20 \
+    --json databaseId,conclusion \
+    --jq '.[] | select(.conclusion=="success") | .databaseId' | head -n1)"
+  if [[ -z "${RUN_ID}" ]]; then
+    echo "Could not resolve successful run ID." >&2
+    exit 1
+  fi
 fi
 
 collect_cmd=(
