@@ -16,7 +16,7 @@ Optional:
   --object-key <key>                       (default: inputs/<project-id>/<filename>)
   --run-date <YYYY-MM-DD>                  (default: UTC today)
   --namespace <ns>                         (default: sideline-wire-dailycast)
-  --image <repo:tag>                       (default: run_bookgen_k8s_job.sh default)
+  --image <repo:tag>                       (default: BOOKGEN_PROD_IMAGE env var, else run_bookgen_k8s_job.sh default)
   --resource-profile <light|standard|heavy>(default: light)
   --bookgen-use-llm <true|false>           (default: true)
   --bookgen-llm-chapter-limit <int>        (default: 1)
@@ -38,7 +38,7 @@ INPUT_PATH=""
 OBJECT_KEY=""
 RUN_DATE="$(date -u +%F)"
 NAMESPACE="sideline-wire-dailycast"
-IMAGE=""
+IMAGE="${BOOKGEN_PROD_IMAGE:-}"
 RESOURCE_PROFILE="light"
 BOOKGEN_USE_LLM="true"
 BOOKGEN_LLM_CHAPTER_LIMIT="1"
