@@ -214,6 +214,14 @@ def test_bookgen_pipeline_end_to_end(monkeypatch):
     assert "run_analytics_key" in assembly
     assert "benchmark_drift_key" in assembly
     assert "experiment_tracker_key" in assembly
+    metadata_pack = yaml.safe_load(backing[assembly["metadata_pack_key"]].decode("utf-8"))
+    export_manifest_key = next(key for key in backing if key.endswith("export_manifest.json"))
+    export_manifest = json.loads(backing[export_manifest_key].decode("utf-8"))
+    assert export_manifest["blurb"] == metadata_pack["blurb"]
+    assert export_manifest["keywords"] == metadata_pack["keywords"]
+    assert export_manifest["categories"] == metadata_pack["categories"]
+    assert all(not str(item).endswith(".") for item in metadata_pack["keywords"])
+    assert "setup" not in metadata_pack["categories"]
     assert any(key.endswith("constitution.yaml") for key in backing)
     assert any(key.endswith("chapter_pack.yaml") for key in backing)
     assert any(key.endswith("scene_cards.yaml") for key in backing)

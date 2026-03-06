@@ -4095,11 +4095,46 @@ def _write_binary(store: ObjectStore, key: str, raw: bytes, content_type: str) -
     store.client.put_object(store.bucket, key, data=stream, length=len(raw), content_type=content_type)
 
 
+def _clean_metadata_phrase(value: str, *, lowercase: bool = False) -> str:
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    text = re.sub(r"\s+([,;:.!?])", r"\1", text)
+    text = text.strip(" \"'`")
+    if lowercase:
+        text = text.rstrip(".,;:!?").lower()
+    return text
+
+
+def _normalize_sentence(value: str) -> str:
+    text = _clean_metadata_phrase(value)
+    if text and text[-1] not in ".!?":
+        text = f"{text}."
+    return text
+
+
+def _dedupe_text(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in items:
+        normalized = _clean_metadata_phrase(item, lowercase=True)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        out.append(normalized)
+    return out
+
+
 def _blurb(constitution: dict[str, Any], installment_pack: dict[str, Any]) -> str:
     title = _effective_installment_title(constitution, installment_pack)
-    summary = installment_pack["intent"]["summary"]
-    theme = installment_pack["theme_expression"]["primary_focus"]
-    return f"{title} follows a tightening conflict where {summary} The story keeps {theme} in play by forcing choices that carry visible cost."
+    narrative_identity = constitution.get("narrative_identity", {})
+    series_title = _clean_metadata_phrase(str(constitution.get("title", title)))
+    subgenre = _clean_metadata_phrase(str(narrative_identity.get("subgenre", narrative_identity.get("genre", "fiction"))))
+    summary = _normalize_sentence(str(installment_pack["intent"]["summary"]))
+    theme = _normalize_sentence(f"The central pressure is {_clean_metadata_phrase(installment_pack['theme_expression']['primary_focus'], lowercase=True)}")
+
+    opening = f"{title} is a {subgenre} installment in the {series_title} series."
+    if theme and _clean_metadata_phrase(installment_pack["theme_expression"]["primary_focus"], lowercase=True) in summary.lower():
+        return f"{opening} {summary}"
+    return f"{opening} {summary} {theme}"
 
 
 def _front_matter_markdown(*, constitution: dict[str, Any], installment_pack: dict[str, Any]) -> str:
@@ -4139,23 +4174,58 @@ def _metadata_pack(*, constitution: dict[str, Any], installment_pack: dict[str, 
     title = _effective_installment_title(constitution, installment_pack)
     narrative_identity = constitution.get("narrative_identity", {})
     series_title = str(constitution.get("title", title))
-    genre = str(narrative_identity.get("genre", "fiction"))
-    subgenre = str(narrative_identity.get("subgenre", genre))
-    audience = str(narrative_identity.get("audience", {}).get("age_band", "adult"))
-    role = installment_pack["intent"]["narrative_role"]
-    theme = installment_pack["theme_expression"]["primary_focus"]
+    genre = _clean_metadata_phrase(str(narrative_identity.get("genre", "fiction")), lowercase=True)
+    subgenre = _clean_metadata_phrase(str(narrative_identity.get("subgenre", genre)), lowercase=True)
+    audience = _clean_metadata_phrase(str(narrative_identity.get("audience", {}).get("age_band", "adult")), lowercase=True)
+    role = _clean_metadata_phrase(str(installment_pack["intent"]["narrative_role"]), lowercase=True)
+    theme = _clean_metadata_phrase(str(installment_pack["theme_expression"]["primary_focus"]), lowercase=True)
     chapter_titles = [str(chapter.get("title", "")).strip() for chapter in outline["chapters"] if str(chapter.get("title", "")).strip()]
-    long_tail = sorted({term for title_value in chapter_titles for term in re.findall(r"[a-z]{5,}", title_value.lower())})
-    keywords = [genre, subgenre, theme, role, audience] + long_tail[:8]
-    categories = [genre, f"{genre}/{subgenre}", role]
+    stopwords = {
+        "about",
+        "after",
+        "before",
+        "between",
+        "briefing",
+        "chapter",
+        "inside",
+        "outside",
+        "their",
+        "there",
+        "these",
+        "those",
+        "under",
+        "where",
+    }
+    long_tail = sorted(
+        {
+            term
+            for title_value in chapter_titles
+            for term in re.findall(r"[a-z]{4,}", title_value.lower())
+            if term not in stopwords
+        }
+    )
+    keywords = _dedupe_text([genre, subgenre, role, audience, theme] + long_tail[:12])
+    audience_category = {
+        "kids": "children fiction",
+        "ya": "young adult fiction",
+        "adult": "adult fiction",
+        "all": "general fiction",
+    }.get(audience, "fiction")
+    categories = _dedupe_text([subgenre or genre, genre, audience_category])
+
+    blurb = _blurb(constitution, installment_pack)
+    short_pitch = f"{title}: {_normalize_sentence(str(installment_pack['intent']['summary']))}"
+    series_description = _normalize_sentence(
+        f"{series_title} is a {subgenre or genre} series about {theme or 'high-stakes choices under pressure'}."
+    )
     return {
         "schema_version": "1.0",
         "title": title,
         "series_title": series_title,
         "installment_index": installment_pack["installment_index"],
-        "blurb": _blurb(constitution, installment_pack),
-        "short_pitch": f"{title}: a {genre} installment where {installment_pack['intent']['summary']}",
-        "series_description": f"{series_title} is a {subgenre} series about {theme} under compounding pressure.",
+        "blurb": blurb,
+        "short_pitch": short_pitch,
+        "series_description": series_description,
         "keywords": keywords,
         "categories": categories,
         "chapter_titles": chapter_titles,
@@ -5567,16 +5637,9 @@ def run_assembly_export(*, project_id: str) -> dict[str, Any]:
         "project_id": project_id,
         "installment_id": planning["installment_id"],
         "title": installment_title,
-        "blurb": _blurb(constitution, installment_pack),
-        "keywords": [
-            constitution["narrative_identity"]["genre"],
-            constitution["narrative_identity"]["subgenre"],
-            installment_pack["theme_expression"]["primary_focus"],
-        ],
-        "categories": [
-            constitution["narrative_identity"]["genre"],
-            installment_pack["intent"]["narrative_role"],
-        ],
+        "blurb": metadata_pack["blurb"],
+        "keywords": list(metadata_pack.get("keywords", [])),
+        "categories": list(metadata_pack.get("categories", [])),
         "continuity_review_key": continuity_key,
         "publishability_gate_key": publishability_key,
         "manuscript_key": manuscript_key,
