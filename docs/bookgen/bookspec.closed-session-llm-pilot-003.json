@@ -1,0 +1,51 @@
+{
+  "project_id": "closed-session-llm-pilot-003",
+  "title": "The Closed Session",
+  "series_title": "The Closed Session",
+  "genre": "thriller",
+  "subgenre": "contemporary institutional thriller",
+  "target_audience": "adult",
+  "tone": "Grounded, restrained, hyper-realistic political tension.",
+  "themes": [
+    "Power protects itself.",
+    "Truth has collateral damage."
+  ],
+  "word_count_target": 90000,
+  "chapter_count": 3,
+  "chapter_word_target": 3000,
+  "planned_series_length": 5,
+  "installment_id": "book-01",
+  "installment_index": 1,
+  "pov": "third_limited",
+  "protagonist_goal": "Expose corruption without triggering institutional collapse.",
+  "core_conflict": "Every lead forces Adrian to choose between exposure and stability.",
+  "stakes": "The most complete truth could fracture the system it is meant to save.",
+  "narrative_role": "setup",
+  "stakes_level": "high",
+  "output_formats": [
+    "md",
+    "docx",
+    "epub",
+    "pdf"
+  ],
+  "characters": [
+    {
+      "name": "Adrian Cole",
+      "role": "protagonist"
+    },
+    {
+      "name": "Maya Rios",
+      "role": "supporting"
+    },
+    {
+      "name": "Thomas Avery",
+      "role": "antagonist"
+    }
+  ],
+  "setting_rules": [
+    "Classified information cannot be publicly disclosed without severe consequences.",
+    "Institutional processes slow scandal rather than accelerate it."
+  ],
+  "prompt_pack_version": "v1",
+  "rubric_version": "v1"
+}
