@@ -1,0 +1,30 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: PublishabilityGate
+type: object
+required:
+  - schema_version
+  - project_id
+  - installment_id
+  - editorial_stage_gate_enabled
+  - checks
+  - stage_counts
+  - pass_status
+  - created_utc
+properties:
+  schema_version:
+    type: string
+  project_id:
+    type: string
+  installment_id:
+    type: string
+  editorial_stage_gate_enabled:
+    type: boolean
+  checks:
+    type: object
+  stage_counts:
+    type: object
+  pass_status:
+    enum: [PASS, FAIL]
+  created_utc:
+    type: string
+additionalProperties: true

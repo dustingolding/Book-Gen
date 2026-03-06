@@ -1,0 +1,61 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ExportManifest
+type: object
+required:
+  - project_id
+  - installment_id
+  - title
+  - blurb
+  - keywords
+  - categories
+  - continuity_review_key
+  - publishability_gate_key
+  - manuscript_key
+  - export_keys
+  - publication_manifest_key
+  - metadata_pack_key
+  - run_analytics_key
+  - benchmark_drift_key
+  - experiment_tracker_key
+  - checksum
+properties:
+  project_id:
+    type: string
+  installment_id:
+    type: string
+  title:
+    type: string
+  blurb:
+    type: string
+  keywords:
+    type: array
+    items:
+      type: string
+  categories:
+    type: array
+    items:
+      type: string
+  continuity_review_key:
+    type: string
+  publishability_gate_key:
+    type: string
+  manuscript_key:
+    type: string
+  export_keys:
+    type: array
+    minItems: 1
+    items:
+      type: string
+  publication_manifest_key:
+    type: string
+  metadata_pack_key:
+    type: string
+  run_analytics_key:
+    type: string
+  benchmark_drift_key:
+    type: string
+  experiment_tracker_key:
+    type: string
+  checksum:
+    type: string
+additionalProperties: true

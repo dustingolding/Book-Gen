@@ -1,0 +1,28 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: PublicationPackage
+type: object
+required:
+  - schema_version
+  - project_id
+  - installment_id
+  - artifact_keys
+  - created_utc
+properties:
+  schema_version:
+    type: string
+  project_id:
+    type: string
+  installment_id:
+    type: string
+  artifact_keys:
+    type: object
+    required:
+      - front_matter
+      - toc
+      - back_matter
+      - metadata_pack
+      - manuscript
+      - exports
+  created_utc:
+    type: string
+additionalProperties: true

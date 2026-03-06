@@ -1,0 +1,91 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bookgen-run-template
+  namespace: sideline-wire-dailycast
+  labels:
+    app.kubernetes.io/name: slw-bookgen
+    app.kubernetes.io/part-of: slw-dailycast
+    app.kubernetes.io/component: bookgen
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  activeDeadlineSeconds: 43200
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: slw-bookgen
+        app.kubernetes.io/part-of: slw-dailycast
+        app.kubernetes.io/component: bookgen
+    spec:
+      serviceAccountName: slw-dailycast
+      restartPolicy: Never
+      nodeSelector:
+        kubernetes.io/arch: amd64
+        slw/workload: ops
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bookgen
+          image: ghcr.io/dustingolding/slw-dailycast-base:latest
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-lc"]
+          args:
+            - |
+              python -m app.cli bookgen \
+                --project-id "${PROJECT_ID}" \
+                --run-date "${RUN_DATE}" \
+                --bookspec-key "${BOOKSPEC_KEY}"
+              python -m app.cli bookgen-analytics-report --project-id "${PROJECT_ID}"
+          envFrom:
+            - secretRef:
+                name: slw-dailycast-secrets
+            - configMapRef:
+                name: slw-dailycast-config
+          env:
+            - name: PROJECT_ID
+              value: "replace-me-project-id"
+            - name: RUN_DATE
+              value: "2026-03-06"
+            - name: BOOKSPEC_KEY
+              value: "inputs/replace-me-project-id/bookspec.json"
+            - name: BOOKGEN_USE_LLM
+              value: "false"
+            - name: BOOKGEN_EVAL_USE_LLM
+              value: "false"
+            - name: BOOKGEN_REWRITE_USE_LLM
+              value: "false"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: var-tmp
+              mountPath: /var/tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: var-tmp
+          emptyDir: {}

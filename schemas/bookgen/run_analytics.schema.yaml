@@ -1,0 +1,35 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: RunAnalytics
+type: object
+required:
+  - schema_version
+  - project_id
+  - installment_id
+  - created_utc
+  - cost_model
+  - cost
+  - performance
+  - quality
+properties:
+  schema_version:
+    type: string
+  project_id:
+    type: string
+  installment_id:
+    type: string
+  created_utc:
+    type: string
+  cost_model:
+    type: string
+  cost:
+    type: object
+    required:
+      - estimated_input_tokens
+      - estimated_output_tokens
+      - estimated_total_tokens
+      - estimated_cost_usd
+  performance:
+    type: object
+  quality:
+    type: object
+additionalProperties: true

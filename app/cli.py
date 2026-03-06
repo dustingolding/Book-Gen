@@ -62,9 +62,27 @@ def main() -> None:
     p_book_approve.add_argument("--decision", required=True)
     p_book_approve.add_argument("--note", default="")
 
+    p_book_revision = sub.add_parser("bookgen-request-revision")
+    p_book_revision.add_argument("--project-id", required=True)
+    p_book_revision.add_argument("--installment-id", default=None)
+    p_book_revision.add_argument("--reason", required=True)
+    p_book_revision.add_argument("--requested-by", default="editor")
+    p_book_revision.add_argument("--severity", default="major")
+
+    p_book_schedule = sub.add_parser("bookgen-schedule-release")
+    p_book_schedule.add_argument("--project-id", required=True)
+    p_book_schedule.add_argument("--installment-id", default=None)
+    p_book_schedule.add_argument("--planned-date", default=None)
+    p_book_schedule.add_argument("--status", default="planned")
+    p_book_schedule.add_argument("--note", default="")
+
     p_book_report = sub.add_parser("bookgen-report")
     p_book_report.add_argument("--project-id", required=True)
     p_book_report.add_argument("--installment-id", default=None)
+
+    p_book_analytics = sub.add_parser("bookgen-analytics-report")
+    p_book_analytics.add_argument("--project-id", required=True)
+    p_book_analytics.add_argument("--installment-id", default=None)
 
     for cmd in [
         "editorial-build",
@@ -198,6 +216,48 @@ def main() -> None:
                 bookgen.operator_report(
                     project_id=args.project_id,
                     installment_id=args.installment_id,
+                ),
+                indent=2,
+                ensure_ascii=True,
+            )
+        )
+        return
+    if args.cmd == "bookgen-analytics-report":
+        print(
+            json.dumps(
+                bookgen.analytics_report(
+                    project_id=args.project_id,
+                    installment_id=args.installment_id,
+                ),
+                indent=2,
+                ensure_ascii=True,
+            )
+        )
+        return
+    if args.cmd == "bookgen-request-revision":
+        print(
+            json.dumps(
+                bookgen.request_revision(
+                    project_id=args.project_id,
+                    installment_id=args.installment_id,
+                    reason=args.reason,
+                    requested_by=args.requested_by,
+                    severity=args.severity,
+                ),
+                indent=2,
+                ensure_ascii=True,
+            )
+        )
+        return
+    if args.cmd == "bookgen-schedule-release":
+        print(
+            json.dumps(
+                bookgen.schedule_release(
+                    project_id=args.project_id,
+                    installment_id=args.installment_id,
+                    planned_date=args.planned_date,
+                    status=args.status,
+                    note=args.note,
                 ),
                 indent=2,
                 ensure_ascii=True,

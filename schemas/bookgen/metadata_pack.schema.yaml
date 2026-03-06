@@ -1,0 +1,47 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: MetadataPack
+type: object
+required:
+  - schema_version
+  - title
+  - series_title
+  - installment_index
+  - blurb
+  - short_pitch
+  - series_description
+  - keywords
+  - categories
+  - chapter_titles
+  - chapter_count
+properties:
+  schema_version:
+    type: string
+  title:
+    type: string
+  series_title:
+    type: string
+  installment_index:
+    type: integer
+    minimum: 1
+  blurb:
+    type: string
+  short_pitch:
+    type: string
+  series_description:
+    type: string
+  keywords:
+    type: array
+    items:
+      type: string
+  categories:
+    type: array
+    items:
+      type: string
+  chapter_titles:
+    type: array
+    items:
+      type: string
+  chapter_count:
+    type: integer
+    minimum: 1
+additionalProperties: true

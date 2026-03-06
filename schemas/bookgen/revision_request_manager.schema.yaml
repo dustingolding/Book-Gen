@@ -1,0 +1,34 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: RevisionRequestManager
+type: object
+required:
+  - schema_version
+  - project_id
+  - installment_id
+  - open_requests
+  - requests
+  - updated_utc
+properties:
+  schema_version:
+    type: string
+  project_id:
+    type: string
+  installment_id:
+    type: string
+  open_requests:
+    type: integer
+    minimum: 0
+  requests:
+    type: array
+    items:
+      type: object
+      required:
+        - request_id
+        - reason
+        - requested_by
+        - severity
+        - status
+        - created_utc
+  updated_utc:
+    type: string
+additionalProperties: true

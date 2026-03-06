@@ -1,0 +1,38 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ReleaseState
+type: object
+required:
+  - schema_version
+  - project_id
+  - installment_id
+  - status
+  - updated_utc
+  - notes
+  - approval
+  - workflow
+properties:
+  schema_version:
+    type: string
+  project_id:
+    type: string
+  installment_id:
+    type: string
+  status:
+    enum:
+      - editorial_hold
+      - editorial_reviewed
+      - approved_for_export
+      - manuscript_locked
+      - approved_for_publication
+      - awaiting_editorial_approval
+  updated_utc:
+    type: string
+  notes:
+    type: array
+    items:
+      type: string
+  approval:
+    type: object
+  workflow:
+    type: object
+additionalProperties: true

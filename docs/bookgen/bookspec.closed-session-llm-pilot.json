@@ -1,5 +1,5 @@
 {
-  "project_id": "closed-session-llm-pilot-003",
+  "project_id": "closed-session-llm-pilot-001",
   "title": "The Closed Session",
   "series_title": "The Closed Session",
   "genre": "thriller",
@@ -11,7 +11,7 @@
     "Truth has collateral damage."
   ],
   "word_count_target": 90000,
-  "chapter_count": 30,
+  "chapter_count": 1,
   "chapter_word_target": 3000,
   "planned_series_length": 5,
   "installment_id": "book-01",

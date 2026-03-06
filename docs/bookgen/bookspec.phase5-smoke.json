@@ -1,0 +1,55 @@
+{
+  "project_id": "phase5-analytics-live-001",
+  "title": "Signal in the Fog",
+  "genre": "thriller",
+  "subgenre": "techno-thriller",
+  "target_audience": "adult",
+  "tone": "grounded, high-tension, restrained prose",
+  "themes": ["trust vs control", "identity under pressure"],
+  "word_count_target": 7000,
+  "chapter_count": 1,
+  "planned_series_length": 1,
+  "installment_id": "book-01",
+  "installment_index": 1,
+  "pov": "third_limited_single",
+  "protagonist_goal": "Expose a covert manipulation network before it triggers mass harm.",
+  "core_conflict": "Every lead compromises personal and professional loyalties.",
+  "stakes": "Failure enables large-scale social disruption and personal ruin.",
+  "narrative_role": "setup",
+  "stakes_level": "high",
+  "output_formats": ["md", "docx", "epub", "pdf"],
+  "characters": [
+    {
+      "name": "Mara Voss",
+      "role": "protagonist",
+      "immutable_traits": ["methodical under pressure", "protective of vulnerable sources"],
+      "mutable_traits": ["trusts too slowly", "leans toward self-sacrifice"],
+      "dialogue_tics": ["asks for proof before agreeing"],
+      "taboo_phrases": ["as you know"],
+      "start_state": "guarded and reactive",
+      "end_state": "decisive and accountable"
+    },
+    {
+      "name": "Elias Trent",
+      "role": "antagonist",
+      "immutable_traits": ["strategic and patient", "treats people as leverage"],
+      "mutable_traits": ["underestimates moral resolve"],
+      "dialogue_tics": ["answers with polished half-truths"],
+      "taboo_phrases": ["trust me"],
+      "start_state": "hidden and controlling",
+      "end_state": "exposed but still dangerous"
+    }
+  ],
+  "setting_rules": [
+    "No implausible surveillance capabilities.",
+    "Timeline causality must remain strict."
+  ],
+  "hook_words": [
+    "Interception",
+    "Countertrace",
+    "Dead Drop",
+    "Ghost Account"
+  ],
+  "prompt_pack_version": "v1",
+  "rubric_version": "v1"
+}

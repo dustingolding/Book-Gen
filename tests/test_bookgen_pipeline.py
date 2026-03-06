@@ -209,6 +209,11 @@ def test_bookgen_pipeline_end_to_end(monkeypatch):
     assert review["generation_mode_counts"]["explicit_fallback"] == bookspec["chapter_count"]
     assert assembly["title"] == bookspec["title"]
     assert assembly["export_keys"][0].endswith("manuscript.md")
+    assert "publication_manifest_key" in assembly
+    assert "metadata_pack_key" in assembly
+    assert "run_analytics_key" in assembly
+    assert "benchmark_drift_key" in assembly
+    assert "experiment_tracker_key" in assembly
     assert any(key.endswith("constitution.yaml") for key in backing)
     assert any(key.endswith("chapter_pack.yaml") for key in backing)
     assert any(key.endswith("scene_cards.yaml") for key in backing)
@@ -219,9 +224,86 @@ def test_bookgen_pipeline_end_to_end(monkeypatch):
     assert any(key.endswith("generation_trace.yaml") for key in backing)
     assert any(key.endswith("eval.yaml") for key in backing)
     assert any(key.endswith("editorial_qc.yaml") for key in backing)
+    assert any(key.endswith("editorial_developmental.yaml") for key in backing)
+    assert any(key.endswith("editorial_line.yaml") for key in backing)
+    assert any(key.endswith("editorial_copy.yaml") for key in backing)
+    assert any(key.endswith("editorial_style.yaml") for key in backing)
+    assert any(key.endswith("editorial_proof.yaml") for key in backing)
+    assert any(key.endswith("editorial_stages.yaml") for key in backing)
+    assert any(key.endswith("publishability_gate.yaml") for key in backing)
     assert any(key.endswith("continuity_review.yaml") for key in backing)
+    assert any(key.endswith("publication_package/front_matter.md") for key in backing)
+    assert any(key.endswith("publication_package/toc.md") for key in backing)
+    assert any(key.endswith("publication_package/back_matter.md") for key in backing)
+    assert any(key.endswith("publication_package/metadata_pack.yaml") for key in backing)
+    assert any(key.endswith("publication_package/publication_manifest.yaml") for key in backing)
+    assert any(key.endswith("export_manifest.json") for key in backing)
+    assert any(key.endswith("analytics/run_analytics.yaml") for key in backing)
+    assert any(key.endswith("analytics/benchmark_drift.yaml") for key in backing)
+    assert any(key.endswith("analytics/experiment_tracker.yaml") for key in backing)
     assert any(key.endswith("release_state.yaml") for key in backing)
     assert any(key.endswith("manuscript.docx") for key in backing)
+
+
+def test_bookgen_assembly_exports_epub_pdf(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(root)
+
+    backing: dict[str, bytes] = {}
+    monkeypatch.setattr(bookgen, "ObjectStore", lambda: MemoryStore(backing))
+    monkeypatch.setattr(bookgen, "_commit_stage_checkpoint", lambda **kwargs: None)
+    monkeypatch.setattr(bookgen, "_log_mlflow_summary", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        bookgen,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bookgen_use_llm=False,
+            bookgen_llm_chapter_limit=0,
+            bookgen_eval_use_llm=False,
+            bookgen_eval_llm_chapter_limit=0,
+            bookgen_rewrite_use_llm=False,
+            bookgen_rewrite_llm_chapter_limit=0,
+            bookgen_title_critic_use_llm=False,
+            bookgen_title_critic_shortlist_size=5,
+            bookgen_editorial_stage_gate=True,
+            llm_endpoint=None,
+        ),
+    )
+
+    project_id = "demo-thriller-pubformats-001"
+    bookspec = json.loads((root / "docs/bookgen/bookspec.sample.json").read_text(encoding="utf-8"))
+    bookspec["chapter_count"] = 2
+    bookspec["output_formats"] = ["md", "docx", "epub", "pdf"]
+    backing[f"inputs/{project_id}/bookspec.json"] = json.dumps(bookspec).encode("utf-8")
+    backing["prompt-packs/thriller/v1/manifest.json"] = json.dumps(
+        {"genre": "thriller", "version": "v1", "structure": {"acts": 3}}
+    ).encode("utf-8")
+    backing["rubrics/thriller/v1/rubric.json"] = json.dumps(
+        {
+            "genre": "thriller",
+            "version": "v1",
+            "chapter_min_words": 120,
+            "pass_overall": 7.0,
+            "hard_fail": [
+                {"category": "world_rule_compliance", "min_score": 7.0},
+                {"category": "character_consistency", "min_score": 7.0},
+            ],
+        }
+    ).encode("utf-8")
+
+    intake = bookgen.run_intake(project_id=project_id, run_date="2026-03-06")
+    resolved = bookgen.run_prompt_pack_resolve(intake=intake)
+    bookgen.run_bible_outline(intake=intake, resolved=resolved)
+    bookgen.run_chapter_drafting(project_id=project_id)
+    bookgen.run_chapter_review(project_id=project_id)
+    assembly = bookgen.run_assembly_export(project_id=project_id)
+
+    assert any(key.endswith("manuscript.epub") for key in assembly["export_keys"])
+    assert any(key.endswith("manuscript.pdf") for key in assembly["export_keys"])
+    assert any(key.endswith("manuscript.epub") for key in backing)
+    assert any(key.endswith("manuscript.pdf") for key in backing)
+    assert any(key.endswith("publication_manifest.yaml") for key in backing)
+    assert any(key.endswith("metadata_pack.yaml") for key in backing)
 
 
 def test_title_engine_generates_closed_session_slate():
@@ -347,6 +429,124 @@ def test_genre_policy_profile_selection_for_juvenile():
     assert profile["profile_id"] == "juvenile_adventure"
     assert profile["structure"]["opening_paragraph_min"] == 7
     assert profile["rewrite"]["max_attempts"] == 2
+    assert profile["editorial"]["line"]["voice_stability_floor"] == 7.2
+
+
+def test_genre_policy_profile_selection_for_institutional_thriller_editorial_thresholds():
+    profile = bookgen._genre_policy_profile(
+        "fiction",
+        "institutional political thriller",
+        "adult",
+    )
+    assert profile["profile_id"] == "institutional_thriller"
+    assert profile["editorial"]["line"]["voice_stability_floor"] == 6.5
+
+
+def test_editorial_stage_line_voice_threshold_is_profile_driven():
+    base_pack = {
+        "chapter_id": "ch-01",
+        "chapter_index": 1,
+        "series_id": "series-test",
+        "installment_id": "book-01",
+    }
+    eval_report = {
+        "overall": 8.2,
+        "scores": {
+            "pacing": 8.0,
+            "structural_clarity": 8.0,
+            "voice_stability": 6.6,
+        },
+        "violations": [],
+    }
+    text = "# Chapter\n\n\"Line one,\" she said.\n\n\"Line two,\" he said.\n\n\"Line three,\" she said.\n\n\"Line four,\" he said.\n"
+    default_editorial = bookgen._editorial_stage_manifests(chapter_pack=base_pack, eval_report=eval_report, text=text)
+    default_line = next(stage for stage in default_editorial["stages"] if stage["stage_name"] == "line")
+    assert default_line["pass_status"] == "FAIL"
+    assert default_line["checks"]["voice_stability_ok"] is False
+
+    institutional_pack = {
+        **base_pack,
+        "policy_profile": {
+            "profile_id": "institutional_thriller",
+            "profile": bookgen._genre_policy_profile("fiction", "institutional political thriller", "adult"),
+        },
+    }
+    institutional_editorial = bookgen._editorial_stage_manifests(
+        chapter_pack=institutional_pack,
+        eval_report=eval_report,
+        text=text,
+    )
+    institutional_line = next(stage for stage in institutional_editorial["stages"] if stage["stage_name"] == "line")
+    assert institutional_line["pass_status"] == "PASS"
+    assert institutional_line["checks"]["voice_stability_ok"] is True
+
+
+def test_editorial_stage_style_checks_terms_names_and_references():
+    chapter_pack = {
+        "chapter_id": "ch-01",
+        "chapter_index": 1,
+        "series_id": "series-test",
+        "installment_id": "book-01",
+        "character_state_slice": [{"character_id": "adrian-cole", "display_name": "Adrian Cole"}],
+        "continuity_slice": {"active_threads": ["thread-core-conflict"]},
+        "research_slice": {
+            "items": [
+                {
+                    "allowed_terms": ["timeline"],
+                    "avoid_terms": ["leaked classified"],
+                }
+            ]
+        },
+    }
+    eval_report = {
+        "overall": 8.6,
+        "scores": {
+            "pacing": 8.1,
+            "structural_clarity": 8.1,
+            "voice_stability": 8.1,
+        },
+        "drift_flags": {"continuity_contradiction": True},
+        "violations": [],
+    }
+    fail_text = (
+        "# Chapter\n\n"
+        "The committee leaked classified notes.\n\n"
+        "No one mentioned him by name.\n\n"
+        "The chapter avoids direct thread markers.\n"
+    )
+    fail_editorial = bookgen._editorial_stage_manifests(chapter_pack=chapter_pack, eval_report=eval_report, text=fail_text)
+    fail_style = next(stage for stage in fail_editorial["stages"] if stage["stage_name"] == "style")
+    assert fail_style["pass_status"] == "FAIL"
+    assert fail_style["checks"]["avoid_terms_absent_ok"] is False
+
+    pass_text = (
+        "# Chapter\n\n"
+        "Adrian Cole reviewed the timeline evidence before committee circulation.\n\n"
+        "He reopened thread-core-conflict as the central reference for the next scene.\n"
+    )
+    pass_editorial = bookgen._editorial_stage_manifests(chapter_pack=chapter_pack, eval_report=eval_report, text=pass_text)
+    pass_style = next(stage for stage in pass_editorial["stages"] if stage["stage_name"] == "style")
+    assert pass_style["pass_status"] == "PASS"
+    assert pass_style["checks"]["avoid_terms_absent_ok"] is True
+    assert pass_style["checks"]["character_name_reference_ok"] is True
+    assert pass_style["checks"]["continuity_reference_ok"] is True
+
+
+def test_chapter_policy_profile_backfills_editorial_for_legacy_profile_payload():
+    legacy_chapter_pack = {
+        "policy_profile": {
+            "profile_id": "institutional_thriller",
+            "profile": {
+                "opening_scene": {"must_start_in_scene": True},
+                "structure": {"opening_paragraph_min": 8},
+                "rewrite": {"max_attempts": 3},
+                "world_rule_language": {"replacements": [], "required_signals": []},
+            },
+        }
+    }
+    profile = bookgen._chapter_policy_profile(legacy_chapter_pack)
+    assert profile["profile_id"] == "institutional_thriller"
+    assert profile["editorial"]["line"]["voice_stability_floor"] == 6.5
 
 
 def test_chapter_pack_applies_genre_policy_profile():
@@ -1949,11 +2149,19 @@ def test_approve_installment_transitions_release_state(monkeypatch):
     bookgen.run_chapter_review(project_id=project_id)
     bookgen.run_assembly_export(project_id=project_id)
 
-    release = bookgen.approve_installment(project_id=project_id, decision="approve", note="Editorial signoff complete.")
+    approved = bookgen.approve_installment(project_id=project_id, decision="approve", note="Editorial signoff complete.")
+    locked = bookgen.approve_installment(project_id=project_id, decision="lock", note="Lock manuscript.")
+    release = bookgen.approve_installment(project_id=project_id, decision="publish", note="Ready for publication.")
     report = bookgen.operator_report(project_id=project_id)
 
-    assert release["status"] == "approved_for_export"
-    assert report["release_state"]["status"] == "approved_for_export"
+    assert approved["status"] == "approved_for_export"
+    assert locked["status"] == "manuscript_locked"
+    assert release["status"] == "approved_for_publication"
+    assert report["release_state"]["status"] == "approved_for_publication"
+    assert len(report["approval_record"]["events"]) == 3
+    assert report["run_analytics"]["quality"]["publishability_pass_status"] == "PASS"
+    assert report["benchmark_drift"]["pass_status"] in {"PASS", "PASS_WITH_NOTES", "FAIL"}
+    assert report["experiment_tracker"]["experiment"]["generation_preset"] in {"smoke", "dev", "production"}
     assert report["continuity_review"]["pass_status"] == "PASS"
 
 
@@ -2012,6 +2220,7 @@ def test_locked_installment_blocks_mutating_stages_without_override(monkeypatch)
     bookgen.run_chapter_drafting(project_id=project_id)
     bookgen.run_chapter_review(project_id=project_id)
     bookgen.run_assembly_export(project_id=project_id)
+    bookgen.approve_installment(project_id=project_id, decision="approve", note="Editorial signoff complete.")
     release = bookgen.approve_installment(project_id=project_id, decision="lock", note="Freeze after approval.")
 
     with pytest.raises(RuntimeError, match="manuscript_locked"):
@@ -2029,6 +2238,271 @@ def test_locked_installment_blocks_mutating_stages_without_override(monkeypatch)
     assert release["status"] == "manuscript_locked"
     assert release["approval"]["locked"] is True
     assert planning["installment_id"] == release["installment_id"]
+
+
+def test_release_transition_blocks_lock_before_approve(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(root)
+
+    backing: dict[str, bytes] = {}
+    monkeypatch.setattr(bookgen, "ObjectStore", lambda: MemoryStore(backing))
+    monkeypatch.setattr(bookgen, "_commit_stage_checkpoint", lambda **kwargs: None)
+    monkeypatch.setattr(bookgen, "_log_mlflow_summary", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        bookgen,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bookgen_generation_preset="production",
+            bookgen_use_llm=False,
+            bookgen_llm_chapter_limit=0,
+            bookgen_eval_use_llm=False,
+            bookgen_eval_llm_chapter_limit=0,
+            bookgen_rewrite_use_llm=False,
+            bookgen_rewrite_llm_chapter_limit=0,
+            bookgen_structural_retry_limit=0,
+            bookgen_title_critic_use_llm=False,
+            bookgen_title_critic_shortlist_size=5,
+            llm_endpoint=None,
+            mlflow_tracking_uri="http://127.0.0.1:15000",
+            mlflow_local_tracking_uri="http://127.0.0.1:15000",
+        ),
+    )
+
+    project_id = "demo-thriller-transition-001"
+    bookspec = json.loads((root / "docs/bookgen/bookspec.sample.json").read_text(encoding="utf-8"))
+    bookspec["chapter_count"] = 1
+    backing[f"inputs/{project_id}/bookspec.json"] = json.dumps(bookspec).encode("utf-8")
+    backing["prompt-packs/thriller/v1/manifest.json"] = json.dumps(
+        {"genre": "thriller", "version": "v1", "structure": {"acts": 3}}
+    ).encode("utf-8")
+    backing["rubrics/thriller/v1/rubric.json"] = json.dumps(
+        {
+            "genre": "thriller",
+            "version": "v1",
+            "chapter_min_words": 120,
+            "pass_overall": 7.0,
+            "hard_fail": [
+                {"category": "world_rule_compliance", "min_score": 7.0},
+                {"category": "character_consistency", "min_score": 7.0},
+            ],
+        }
+    ).encode("utf-8")
+
+    intake = bookgen.run_intake(project_id=project_id, run_date="2026-03-04")
+    resolved = bookgen.run_prompt_pack_resolve(intake=intake)
+    bookgen.run_bible_outline(intake=intake, resolved=resolved)
+    bookgen.run_chapter_drafting(project_id=project_id)
+    bookgen.run_chapter_review(project_id=project_id)
+    bookgen.run_assembly_export(project_id=project_id)
+
+    with pytest.raises(RuntimeError, match="Invalid release transition"):
+        bookgen.approve_installment(project_id=project_id, decision="lock", note="Should fail")
+
+
+def test_revision_request_and_release_schedule(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(root)
+
+    backing: dict[str, bytes] = {}
+    monkeypatch.setattr(bookgen, "ObjectStore", lambda: MemoryStore(backing))
+    monkeypatch.setattr(bookgen, "_commit_stage_checkpoint", lambda **kwargs: None)
+    monkeypatch.setattr(bookgen, "_log_mlflow_summary", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        bookgen,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bookgen_generation_preset="production",
+            bookgen_use_llm=False,
+            bookgen_llm_chapter_limit=0,
+            bookgen_eval_use_llm=False,
+            bookgen_eval_llm_chapter_limit=0,
+            bookgen_rewrite_use_llm=False,
+            bookgen_rewrite_llm_chapter_limit=0,
+            bookgen_structural_retry_limit=0,
+            bookgen_title_critic_use_llm=False,
+            bookgen_title_critic_shortlist_size=5,
+            llm_endpoint=None,
+            mlflow_tracking_uri="http://127.0.0.1:15000",
+            mlflow_local_tracking_uri="http://127.0.0.1:15000",
+        ),
+    )
+
+    project_id = "demo-thriller-revision-001"
+    bookspec = json.loads((root / "docs/bookgen/bookspec.sample.json").read_text(encoding="utf-8"))
+    bookspec["chapter_count"] = 1
+    backing[f"inputs/{project_id}/bookspec.json"] = json.dumps(bookspec).encode("utf-8")
+    backing["prompt-packs/thriller/v1/manifest.json"] = json.dumps(
+        {"genre": "thriller", "version": "v1", "structure": {"acts": 3}}
+    ).encode("utf-8")
+    backing["rubrics/thriller/v1/rubric.json"] = json.dumps(
+        {
+            "genre": "thriller",
+            "version": "v1",
+            "chapter_min_words": 120,
+            "pass_overall": 7.0,
+            "hard_fail": [
+                {"category": "world_rule_compliance", "min_score": 7.0},
+                {"category": "character_consistency", "min_score": 7.0},
+            ],
+        }
+    ).encode("utf-8")
+
+    intake = bookgen.run_intake(project_id=project_id, run_date="2026-03-04")
+    resolved = bookgen.run_prompt_pack_resolve(intake=intake)
+    bookgen.run_bible_outline(intake=intake, resolved=resolved)
+    bookgen.run_chapter_drafting(project_id=project_id)
+    bookgen.run_chapter_review(project_id=project_id)
+    bookgen.run_assembly_export(project_id=project_id)
+
+    revision = bookgen.request_revision(
+        project_id=project_id,
+        reason="Tighten chapter opening scene beat cadence.",
+        requested_by="managing_editor",
+        severity="major",
+    )
+    schedule = bookgen.schedule_release(
+        project_id=project_id,
+        planned_date="2026-04-15",
+        status="planned",
+        note="Target spring release.",
+    )
+    report = bookgen.operator_report(project_id=project_id)
+
+    assert revision["release_state"]["status"] == "editorial_hold"
+    assert revision["revision_request_manager"]["open_requests"] == 1
+    assert schedule["status"] == "planned"
+    assert report["revision_request_manager"]["open_requests"] == 1
+    assert report["release_schedule"]["planned_date"] == "2026-04-15"
+
+
+def test_benchmark_drift_detects_quality_drop():
+    baseline = {
+        "installment_id": "book-01",
+        "quality": {"avg_overall_score": 8.4, "chapter_pass_rate": 1.0, "continuity_pass_status": "PASS"},
+        "cost": {"estimated_cost_usd": 0.32},
+    }
+    current = {
+        "quality": {"avg_overall_score": 7.2, "chapter_pass_rate": 0.88, "continuity_pass_status": "FAIL"},
+        "cost": {"estimated_cost_usd": 0.58},
+    }
+    drift = bookgen._benchmark_drift_payload(
+        project_id="demo-thriller-benchmark-001",
+        installment_id="book-02",
+        current_analytics=current,
+        baseline=baseline,
+    )
+
+    assert drift["baseline_available"] is True
+    assert drift["pass_status"] == "FAIL"
+    alert_types = {item["type"] for item in drift["alerts"]}
+    assert "quality_drop" in alert_types
+    assert "continuity_regression" in alert_types
+
+
+def test_load_benchmark_thresholds_defaults_when_missing(monkeypatch):
+    monkeypatch.setattr(bookgen, "_bookgen_benchmark_thresholds_path", lambda: Path("/tmp/nonexistent-benchmark-thresholds.yaml"))
+    thresholds = bookgen._load_benchmark_thresholds()
+    assert thresholds["quality_drop_fail"] == -0.75
+    assert thresholds["cost_increase_warn_ratio"] == 0.40
+
+
+def test_benchmark_drift_respects_configured_thresholds(monkeypatch):
+    monkeypatch.setattr(
+        bookgen,
+        "_load_benchmark_thresholds",
+        lambda: {
+            "quality_drop_fail": -2.0,
+            "quality_drop_warn": -0.1,
+            "pass_rate_drop_fail": -0.2,
+            "cost_increase_warn_abs": 10.0,
+            "cost_increase_warn_ratio": 10.0,
+        },
+    )
+    baseline = {
+        "installment_id": "book-01",
+        "quality": {"avg_overall_score": 8.4, "chapter_pass_rate": 1.0, "continuity_pass_status": "PASS"},
+        "cost": {"estimated_cost_usd": 0.32},
+    }
+    current = {
+        "quality": {"avg_overall_score": 8.0, "chapter_pass_rate": 0.95, "continuity_pass_status": "PASS"},
+        "cost": {"estimated_cost_usd": 0.33},
+    }
+    drift = bookgen._benchmark_drift_payload(
+        project_id="demo-thriller-benchmark-002",
+        installment_id="book-02",
+        current_analytics=current,
+        baseline=baseline,
+    )
+    assert drift["pass_status"] == "PASS_WITH_NOTES"
+    assert drift["alerts"][0]["type"] == "quality_drop"
+    assert drift["alerts"][0]["severity"] == "medium"
+
+
+def test_analytics_report_summarizes_current_and_history(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(root)
+
+    backing: dict[str, bytes] = {}
+    monkeypatch.setattr(bookgen, "ObjectStore", lambda: MemoryStore(backing))
+    monkeypatch.setattr(bookgen, "_commit_stage_checkpoint", lambda **kwargs: None)
+    monkeypatch.setattr(bookgen, "_log_mlflow_summary", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        bookgen,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bookgen_generation_preset="production",
+            bookgen_use_llm=False,
+            bookgen_llm_chapter_limit=0,
+            bookgen_eval_use_llm=False,
+            bookgen_eval_llm_chapter_limit=0,
+            bookgen_rewrite_use_llm=False,
+            bookgen_rewrite_llm_chapter_limit=0,
+            bookgen_structural_retry_limit=0,
+            bookgen_title_critic_use_llm=False,
+            bookgen_title_critic_shortlist_size=5,
+            bookgen_editorial_stage_gate=True,
+            llm_provider_profile="default",
+            llm_model="gpt-4o",
+            llm_endpoint=None,
+            mlflow_tracking_uri="http://127.0.0.1:15000",
+            mlflow_local_tracking_uri="http://127.0.0.1:15000",
+        ),
+    )
+
+    project_id = "demo-thriller-analytics-report-001"
+    bookspec = json.loads((root / "docs/bookgen/bookspec.sample.json").read_text(encoding="utf-8"))
+    bookspec["chapter_count"] = 1
+    backing[f"inputs/{project_id}/bookspec.json"] = json.dumps(bookspec).encode("utf-8")
+    backing["prompt-packs/thriller/v1/manifest.json"] = json.dumps(
+        {"genre": "thriller", "version": "v1", "structure": {"acts": 3}}
+    ).encode("utf-8")
+    backing["rubrics/thriller/v1/rubric.json"] = json.dumps(
+        {
+            "genre": "thriller",
+            "version": "v1",
+            "chapter_min_words": 120,
+            "pass_overall": 7.0,
+            "hard_fail": [
+                {"category": "world_rule_compliance", "min_score": 7.0},
+                {"category": "character_consistency", "min_score": 7.0},
+            ],
+        }
+    ).encode("utf-8")
+
+    intake = bookgen.run_intake(project_id=project_id, run_date="2026-03-06")
+    resolved = bookgen.run_prompt_pack_resolve(intake=intake)
+    bookgen.run_bible_outline(intake=intake, resolved=resolved)
+    bookgen.run_chapter_drafting(project_id=project_id)
+    bookgen.run_chapter_review(project_id=project_id)
+    bookgen.run_assembly_export(project_id=project_id)
+
+    report = bookgen.analytics_report(project_id=project_id)
+
+    assert report["project_id"] == project_id
+    assert report["current"]["run_analytics"]["quality"]["publishability_pass_status"] == "PASS"
+    assert report["current"]["benchmark_drift"]["baseline_available"] in {True, False}
+    assert report["current"]["experiment_tracker"]["experiment"]["generation_preset"] == "production"
+    assert report["portfolio"]["history_run_count"] >= 1
 
 
 def test_continuity_review_flags_adjacent_semantic_break():

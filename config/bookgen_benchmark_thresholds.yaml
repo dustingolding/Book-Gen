@@ -1,0 +1,5 @@
+quality_drop_fail: -0.75
+quality_drop_warn: -0.25
+pass_rate_drop_fail: -0.05
+cost_increase_warn_abs: 0.25
+cost_increase_warn_ratio: 0.40

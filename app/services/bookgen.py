@@ -9,6 +9,7 @@ import socket
 import zipfile
 from collections import Counter
 from datetime import date, datetime, timezone
+from io import BytesIO
 from pathlib import Path
 from statistics import mean
 from typing import Any
@@ -160,6 +161,11 @@ BOOKGEN_POLICY_PROFILES = {
                 "originality",
             ],
         },
+        "editorial": {
+            "developmental": {"overall_score_floor": 7.5, "pacing_floor": 7.0, "structural_clarity_floor": 7.0},
+            "line": {"voice_stability_floor": 7.0, "paragraph_floor": 4, "avg_paragraph_density_max": 260},
+            "copy": {"max_double_space_hits_floor": 2, "double_space_hits_per_paragraph_divisor": 2},
+        },
         "world_rule_language": {
             "replacements": [
                 {"pattern": r"\bleak(?:ed|ing)?\s+classified\b", "replacement": "filed a sealed classified notice"},
@@ -206,6 +212,11 @@ BOOKGEN_POLICY_PROFILES = {
                 "thematic_coherence",
                 "originality",
             ],
+        },
+        "editorial": {
+            "developmental": {"overall_score_floor": 7.5, "pacing_floor": 7.0, "structural_clarity_floor": 7.0},
+            "line": {"voice_stability_floor": 6.5, "paragraph_floor": 4, "avg_paragraph_density_max": 260},
+            "copy": {"max_double_space_hits_floor": 2, "double_space_hits_per_paragraph_divisor": 2},
         },
         "world_rule_language": {
             "replacements": [
@@ -254,6 +265,11 @@ BOOKGEN_POLICY_PROFILES = {
                 "escalation_compliance",
             ],
         },
+        "editorial": {
+            "developmental": {"overall_score_floor": 7.5, "pacing_floor": 7.0, "structural_clarity_floor": 7.0},
+            "line": {"voice_stability_floor": 7.2, "paragraph_floor": 4, "avg_paragraph_density_max": 240},
+            "copy": {"max_double_space_hits_floor": 2, "double_space_hits_per_paragraph_divisor": 2},
+        },
         "world_rule_language": {
             "replacements": [
                 {"pattern": r"\bleak(?:ed|ing)?\b", "replacement": "shared outside safe channels"},
@@ -298,6 +314,35 @@ def _load_yaml_file(path: Path) -> dict[str, Any]:
 
 def _schema_path(name: str) -> Path:
     return Path("schemas/bookgen") / f"{name}.schema.yaml"
+
+
+def _bookgen_benchmark_thresholds_path() -> Path:
+    return Path("config/bookgen_benchmark_thresholds.yaml")
+
+
+def _load_benchmark_thresholds() -> dict[str, Any]:
+    defaults = {
+        "quality_drop_fail": -0.75,
+        "quality_drop_warn": -0.25,
+        "pass_rate_drop_fail": -0.05,
+        "cost_increase_warn_abs": 0.25,
+        "cost_increase_warn_ratio": 0.40,
+    }
+    path = _bookgen_benchmark_thresholds_path()
+    if not path.exists():
+        return defaults
+    try:
+        payload = _load_yaml_file(path)
+    except Exception:
+        return defaults
+    if not isinstance(payload, dict):
+        return defaults
+    merged = dict(defaults)
+    for key in defaults:
+        value = payload.get(key)
+        if isinstance(value, (int, float)):
+            merged[key] = float(value)
+    return merged
 
 
 def _validate_structured_payload(payload: dict[str, Any], schema_name: str) -> None:
@@ -2370,6 +2415,20 @@ def _genre_policy_profile(genre: str, subgenre: str, audience: str) -> dict[str,
         "opening_scene": {**base["opening_scene"], **selected.get("opening_scene", {})},
         "structure": {**base["structure"], **selected.get("structure", {})},
         "rewrite": {**base["rewrite"], **selected.get("rewrite", {})},
+        "editorial": {
+            "developmental": {
+                **base.get("editorial", {}).get("developmental", {}),
+                **selected.get("editorial", {}).get("developmental", {}),
+            },
+            "line": {
+                **base.get("editorial", {}).get("line", {}),
+                **selected.get("editorial", {}).get("line", {}),
+            },
+            "copy": {
+                **base.get("editorial", {}).get("copy", {}),
+                **selected.get("editorial", {}).get("copy", {}),
+            },
+        },
         "world_rule_language": {
             "replacements": list(selected.get("world_rule_language", {}).get("replacements", base["world_rule_language"]["replacements"])),
             "required_signals": list(
@@ -2383,8 +2442,45 @@ def _chapter_policy_profile(chapter_pack: dict[str, Any]) -> dict[str, Any]:
     profile = chapter_pack.get("policy_profile")
     if isinstance(profile, dict) and isinstance(profile.get("profile"), dict):
         merged = profile["profile"]
-        if all(isinstance(merged.get(key), dict) for key in ("opening_scene", "structure", "rewrite", "world_rule_language")):
-            return merged
+        profile_id = str(profile.get("profile_id", "")).strip().lower()
+        if profile_id in BOOKGEN_POLICY_PROFILES:
+            base_profile = _genre_policy_profile(profile_id, profile_id, profile_id)
+        else:
+            base_profile = _genre_policy_profile("fiction", "fiction", "adult")
+        return {
+            "profile_id": profile_id or base_profile.get("profile_id", "default"),
+            "opening_scene": {**base_profile.get("opening_scene", {}), **merged.get("opening_scene", {})},
+            "structure": {**base_profile.get("structure", {}), **merged.get("structure", {})},
+            "rewrite": {**base_profile.get("rewrite", {}), **merged.get("rewrite", {})},
+            "editorial": {
+                "developmental": {
+                    **base_profile.get("editorial", {}).get("developmental", {}),
+                    **merged.get("editorial", {}).get("developmental", {}),
+                },
+                "line": {
+                    **base_profile.get("editorial", {}).get("line", {}),
+                    **merged.get("editorial", {}).get("line", {}),
+                },
+                "copy": {
+                    **base_profile.get("editorial", {}).get("copy", {}),
+                    **merged.get("editorial", {}).get("copy", {}),
+                },
+            },
+            "world_rule_language": {
+                "replacements": list(
+                    merged.get("world_rule_language", {}).get(
+                        "replacements",
+                        base_profile.get("world_rule_language", {}).get("replacements", []),
+                    )
+                ),
+                "required_signals": list(
+                    merged.get("world_rule_language", {}).get(
+                        "required_signals",
+                        base_profile.get("world_rule_language", {}).get("required_signals", []),
+                    )
+                ),
+            },
+        }
     return _genre_policy_profile("fiction", "fiction", "adult")
 
 
@@ -2553,6 +2649,10 @@ def _bookgen_use_llm_for_titles() -> bool:
     if not bool(getattr(cfg, "bookgen_title_critic_use_llm", False)):
         return False
     return bool((cfg.llm_endpoint or "").strip())
+
+
+def _bookgen_editorial_stage_gate_enabled() -> bool:
+    return bool(getattr(get_settings(), "bookgen_editorial_stage_gate", True))
 
 
 def _title_critic_prompts(strategy: dict[str, Any], brief: dict[str, Any], finalists: list[dict[str, Any]]) -> tuple[str, str]:
@@ -3799,9 +3899,198 @@ def _manuscript_to_docx_bytes(title: str, sections: list[str]) -> bytes:
     return raw
 
 
-def _write_binary(store: ObjectStore, key: str, raw: bytes, content_type: str) -> None:
-    from io import BytesIO
+def _pdf_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
+
+def _markdown_to_text_lines(sections: list[str]) -> list[str]:
+    lines: list[str] = []
+    for section in sections:
+        for line in section.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                heading = stripped.lstrip("#").strip()
+                lines.append(heading.upper())
+                lines.append("")
+                continue
+            if not stripped:
+                lines.append("")
+                continue
+            lines.append(stripped)
+        if lines and lines[-1] != "":
+            lines.append("")
+    return lines
+
+
+def _wrap_text_for_pdf(lines: list[str], *, max_chars: int = 92) -> list[str]:
+    wrapped: list[str] = []
+    for line in lines:
+        if not line:
+            wrapped.append("")
+            continue
+        words = line.split()
+        current: list[str] = []
+        for word in words:
+            trial = " ".join(current + [word]).strip()
+            if len(trial) <= max_chars:
+                current.append(word)
+                continue
+            if current:
+                wrapped.append(" ".join(current))
+            current = [word]
+        if current:
+            wrapped.append(" ".join(current))
+    return wrapped
+
+
+def _manuscript_to_pdf_bytes(title: str, sections: list[str]) -> bytes:
+    all_lines = [title.upper(), ""] + _wrap_text_for_pdf(_markdown_to_text_lines(sections))
+    lines_per_page = 44
+    pages = [all_lines[idx : idx + lines_per_page] for idx in range(0, len(all_lines), lines_per_page)]
+    if not pages:
+        pages = [[title.upper()]]
+
+    objects: list[bytes] = []
+
+    def add_object(raw: str) -> int:
+        objects.append(raw.encode("latin-1", errors="replace"))
+        return len(objects)
+
+    catalog_id = add_object("<< /Type /Catalog /Pages 2 0 R >>")
+    pages_id = add_object("<< /Type /Pages /Kids [] /Count 0 >>")
+    font_id = add_object("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+
+    page_ids: list[int] = []
+    content_ids: list[int] = []
+    for page_lines in pages:
+        text_ops = ["BT", "/F1 11 Tf", "72 770 Td", "14 TL"]
+        for line in page_lines:
+            if line:
+                text_ops.append(f"({_pdf_escape(line)}) Tj")
+            text_ops.append("T*")
+        text_ops.append("ET")
+        stream = "\n".join(text_ops).encode("latin-1", errors="replace")
+        content_id = add_object(f"<< /Length {len(stream)} >>\nstream\n{stream.decode('latin-1')}\nendstream")
+        page_id = add_object(
+            f"<< /Type /Page /Parent {pages_id} 0 R /MediaBox [0 0 612 792] "
+            f"/Resources << /Font << /F1 {font_id} 0 R >> >> /Contents {content_id} 0 R >>"
+        )
+        content_ids.append(content_id)
+        page_ids.append(page_id)
+
+    kids = " ".join(f"{pid} 0 R" for pid in page_ids)
+    objects[pages_id - 1] = f"<< /Type /Pages /Kids [{kids}] /Count {len(page_ids)} >>".encode("latin-1")
+    objects[catalog_id - 1] = f"<< /Type /Catalog /Pages {pages_id} 0 R >>".encode("latin-1")
+
+    out = BytesIO()
+    out.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0]
+    for idx, blob in enumerate(objects, start=1):
+        offsets.append(out.tell())
+        out.write(f"{idx} 0 obj\n".encode("latin-1"))
+        out.write(blob)
+        out.write(b"\nendobj\n")
+    xref_start = out.tell()
+    out.write(f"xref\n0 {len(objects) + 1}\n".encode("latin-1"))
+    out.write(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        out.write(f"{offset:010d} 00000 n \n".encode("latin-1"))
+    out.write(
+        (
+            f"trailer\n<< /Size {len(objects) + 1} /Root {catalog_id} 0 R >>\n"
+            f"startxref\n{xref_start}\n%%EOF\n"
+        ).encode("latin-1")
+    )
+    return out.getvalue()
+
+
+def _markdown_section_to_xhtml(section: str) -> str:
+    blocks = [part.strip() for part in section.split("\n\n") if part.strip()]
+    rendered: list[str] = []
+    for block in blocks:
+        if block.startswith("#"):
+            heading = block.lstrip("#").strip()
+            rendered.append(f"<h2>{escape(heading)}</h2>")
+        else:
+            rendered.append(f"<p>{escape(block)}</p>")
+    return "\n".join(rendered)
+
+
+def _manuscript_to_epub_bytes(*, title: str, author: str, sections: list[str], chapter_titles: list[str]) -> bytes:
+    uid = hashlib.sha256(f"{title}:{author}".encode("utf-8")).hexdigest()[:16]
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    chapters = []
+    spine_items = []
+    toc_links = []
+    for idx, section in enumerate(sections, start=1):
+        chap_id = f"chap{idx:03d}"
+        chap_name = f"{chap_id}.xhtml"
+        chapter_title = chapter_titles[idx - 1] if idx - 1 < len(chapter_titles) else f"Chapter {idx}"
+        xhtml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml">\n'
+            "<head><title>"
+            + escape(chapter_title)
+            + "</title></head>\n<body>\n"
+            + _markdown_section_to_xhtml(section)
+            + "\n</body></html>\n"
+        )
+        chapters.append((chap_name, xhtml))
+        spine_items.append(f'<itemref idref="{chap_id}"/>')
+        toc_links.append(f'<li><a href="{chap_name}">{escape(chapter_title)}</a></li>')
+
+    nav_doc = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<html xmlns="http://www.w3.org/1999/xhtml">\n'
+        "<head><title>Table of Contents</title></head>\n<body>\n"
+        '<nav epub:type="toc" id="toc"><h1>Contents</h1><ol>'
+        + "".join(toc_links)
+        + "</ol></nav>\n</body></html>\n"
+    )
+
+    manifest_items = [
+        '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>'
+    ] + [
+        f'<item id="chap{idx:03d}" href="chap{idx:03d}.xhtml" media-type="application/xhtml+xml"/>'
+        for idx in range(1, len(chapters) + 1)
+    ]
+    content_opf = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="3.0">\n'
+        "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
+        f"    <dc:identifier id=\"bookid\">urn:uuid:{uid}</dc:identifier>\n"
+        f"    <dc:title>{escape(title)}</dc:title>\n"
+        f"    <dc:creator>{escape(author)}</dc:creator>\n"
+        f"    <dc:language>en</dc:language>\n"
+        f"    <meta property=\"dcterms:modified\">{escape(timestamp)}</meta>\n"
+        "  </metadata>\n"
+        "  <manifest>\n    "
+        + "\n    ".join(manifest_items)
+        + "\n  </manifest>\n"
+        "  <spine>\n    "
+        + "\n    ".join(spine_items)
+        + "\n  </spine>\n"
+        "</package>\n"
+    )
+    container_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n'
+        '  <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>\n'
+        "</container>\n"
+    )
+
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        zf.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container_xml, compress_type=zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/content.opf", content_opf, compress_type=zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/nav.xhtml", nav_doc, compress_type=zipfile.ZIP_DEFLATED)
+        for chap_name, xhtml in chapters:
+            zf.writestr(f"OEBPS/{chap_name}", xhtml, compress_type=zipfile.ZIP_DEFLATED)
+    return buffer.getvalue()
+
+
+def _write_binary(store: ObjectStore, key: str, raw: bytes, content_type: str) -> None:
     stream = BytesIO(raw)
     store.client.put_object(store.bucket, key, data=stream, length=len(raw), content_type=content_type)
 
@@ -3813,6 +4102,67 @@ def _blurb(constitution: dict[str, Any], installment_pack: dict[str, Any]) -> st
     return f"{title} follows a tightening conflict where {summary} The story keeps {theme} in play by forcing choices that carry visible cost."
 
 
+def _front_matter_markdown(*, constitution: dict[str, Any], installment_pack: dict[str, Any]) -> str:
+    title = _effective_installment_title(constitution, installment_pack)
+    narrative_identity = constitution.get("narrative_identity", {})
+    series_title = str(constitution.get("title", title))
+    genre = str(narrative_identity.get("genre", "fiction"))
+    subgenre = str(narrative_identity.get("subgenre", genre))
+    return (
+        f"# {title}\n\n"
+        f"## {series_title}\n\n"
+        f"Genre: {genre} / {subgenre}\n\n"
+        f"Installment: {installment_pack['installment_index']}\n\n"
+        "All rights reserved.\n"
+    )
+
+
+def _toc_markdown(*, outline: dict[str, Any]) -> str:
+    lines = ["# Table of Contents", ""]
+    for chapter in outline["chapters"]:
+        lines.append(f"- Chapter {int(chapter['chapter_index'])}: {chapter['title']}")
+    return "\n".join(lines) + "\n"
+
+
+def _back_matter_markdown(*, constitution: dict[str, Any], installment_pack: dict[str, Any]) -> str:
+    series_title = str(constitution.get("title", "Series"))
+    return (
+        "# About This Series\n\n"
+        f"{series_title} explores {installment_pack['theme_expression']['primary_focus']} "
+        "through escalating institutional pressure and consequence.\n\n"
+        "# About This Installment\n\n"
+        f"{installment_pack['intent']['summary']}\n"
+    )
+
+
+def _metadata_pack(*, constitution: dict[str, Any], installment_pack: dict[str, Any], outline: dict[str, Any]) -> dict[str, Any]:
+    title = _effective_installment_title(constitution, installment_pack)
+    narrative_identity = constitution.get("narrative_identity", {})
+    series_title = str(constitution.get("title", title))
+    genre = str(narrative_identity.get("genre", "fiction"))
+    subgenre = str(narrative_identity.get("subgenre", genre))
+    audience = str(narrative_identity.get("audience", {}).get("age_band", "adult"))
+    role = installment_pack["intent"]["narrative_role"]
+    theme = installment_pack["theme_expression"]["primary_focus"]
+    chapter_titles = [str(chapter.get("title", "")).strip() for chapter in outline["chapters"] if str(chapter.get("title", "")).strip()]
+    long_tail = sorted({term for title_value in chapter_titles for term in re.findall(r"[a-z]{5,}", title_value.lower())})
+    keywords = [genre, subgenre, theme, role, audience] + long_tail[:8]
+    categories = [genre, f"{genre}/{subgenre}", role]
+    return {
+        "schema_version": "1.0",
+        "title": title,
+        "series_title": series_title,
+        "installment_index": installment_pack["installment_index"],
+        "blurb": _blurb(constitution, installment_pack),
+        "short_pitch": f"{title}: a {genre} installment where {installment_pack['intent']['summary']}",
+        "series_description": f"{series_title} is a {subgenre} series about {theme} under compounding pressure.",
+        "keywords": keywords,
+        "categories": categories,
+        "chapter_titles": chapter_titles,
+        "chapter_count": len(chapter_titles),
+    }
+
+
 def _release_state_key(project_id: str, installment_id: str) -> str:
     return f"{_project_root(project_id, installment_id)}/release/release_state.yaml"
 
@@ -3821,8 +4171,44 @@ def _approval_record_key(project_id: str, installment_id: str) -> str:
     return f"{_project_root(project_id, installment_id)}/release/approval_record.yaml"
 
 
+def _revision_request_manager_key(project_id: str, installment_id: str) -> str:
+    return f"{_project_root(project_id, installment_id)}/release/revision_request_manager.yaml"
+
+
+def _release_schedule_key(project_id: str, installment_id: str) -> str:
+    return f"{_project_root(project_id, installment_id)}/release/release_schedule.yaml"
+
+
 def _continuity_review_key(project_id: str, installment_id: str) -> str:
     return f"{_project_root(project_id, installment_id)}/assembly/continuity_review.yaml"
+
+
+def _publishability_gate_key(project_id: str, installment_id: str) -> str:
+    return f"{_project_root(project_id, installment_id)}/eval/publishability_gate.yaml"
+
+
+def _analytics_run_key(project_id: str, installment_id: str) -> str:
+    return f"{_project_root(project_id, installment_id)}/analytics/run_analytics.yaml"
+
+
+def _benchmark_drift_key(project_id: str, installment_id: str) -> str:
+    return f"{_project_root(project_id, installment_id)}/analytics/benchmark_drift.yaml"
+
+
+def _experiment_tracker_key(project_id: str, installment_id: str) -> str:
+    return f"{_project_root(project_id, installment_id)}/analytics/experiment_tracker.yaml"
+
+
+def _benchmark_history_key(project_id: str) -> str:
+    return f"runs/{project_id}/meta/benchmark_history.json"
+
+
+def _editorial_stage_key(chapter_root: str, stage_name: str) -> str:
+    return f"{chapter_root}/editorial_{stage_name}.yaml"
+
+
+def _editorial_stage_summary_key(chapter_root: str) -> str:
+    return f"{chapter_root}/editorial_stages.yaml"
 
 
 def _load_release_state(store: ObjectStore, project_id: str, installment_id: str) -> dict[str, Any] | None:
@@ -3830,6 +4216,34 @@ def _load_release_state(store: ObjectStore, project_id: str, installment_id: str
     if not store.exists(key):
         return None
     return _read_yaml(store, key)
+
+
+def _release_transition(
+    *,
+    current_status: str,
+    decision: str,
+) -> str:
+    current = (current_status or "editorial_hold").strip().lower()
+    normalized = decision.strip().lower()
+    allowed: dict[tuple[str, str], str] = {
+        ("editorial_reviewed", "approve"): "approved_for_export",
+        ("awaiting_editorial_approval", "approve"): "approved_for_export",
+        ("approved_for_export", "lock"): "manuscript_locked",
+        ("manuscript_locked", "publish"): "approved_for_publication",
+    }
+    if normalized == "hold":
+        if current in {"manuscript_locked", "approved_for_publication"}:
+            raise RuntimeError(
+                "Invalid release transition: locked/published installments cannot move to editorial_hold."
+            )
+        return "editorial_hold"
+    if (current, normalized) not in allowed:
+        raise RuntimeError(
+            "Invalid release transition: "
+            f"status={current_status!r} decision={decision!r}. "
+            "Allowed path: editorial_reviewed -> approved_for_export -> manuscript_locked -> approved_for_publication."
+        )
+    return allowed[(current, normalized)]
 
 
 def _bookgen_allow_lock_override() -> bool:
@@ -3861,6 +4275,342 @@ def _sentence_opening(text: str) -> str:
 
 def _paragraphs(text: str) -> list[str]:
     return [part.strip() for part in _strip_heading(text).split("\n\n") if part.strip()]
+
+
+def _run_analytics_payload(
+    *,
+    project_id: str,
+    installment_id: str,
+    intake: dict[str, Any],
+    review: dict[str, Any],
+    generation_summary: dict[str, Any],
+    continuity_review: dict[str, Any],
+    publishability_gate: dict[str, Any],
+) -> dict[str, Any]:
+    chapter_traces = [item for item in generation_summary.get("chapters", []) if isinstance(item, dict)]
+    attempts = [int(item.get("attempt_count", 0) or 0) for item in chapter_traces]
+    llm_requested = sum(1 for item in chapter_traces if str(item.get("requested_mode", "")).strip() == "llm")
+    llm_final = sum(1 for item in chapter_traces if str(item.get("final_mode", "")).strip() == "llm")
+    fallback_final = sum(1 for item in chapter_traces if str(item.get("final_mode", "")).strip() == "fallback")
+    chapter_word_target = int((intake.get("chapter_word_target", 0) or 0))
+    if chapter_word_target <= 0:
+        chapter_word_target = 3800
+    total_chapters = int(review.get("total_chapters", len(chapter_traces)) or len(chapter_traces) or 1)
+    target_words_total = chapter_word_target * total_chapters
+    estimated_output_tokens = int(target_words_total * 1.32)
+    estimated_input_tokens = int(estimated_output_tokens * 0.65)
+    # Heuristic blended price signal for cross-model trend monitoring.
+    estimated_cost_usd = round((estimated_input_tokens * 0.0000003) + (estimated_output_tokens * 0.0000012), 4)
+
+    return {
+        "schema_version": "1.0",
+        "project_id": project_id,
+        "installment_id": installment_id,
+        "created_utc": _utcnow(),
+        "cost_model": "heuristic_v1",
+        "cost": {
+            "estimated_input_tokens": estimated_input_tokens,
+            "estimated_output_tokens": estimated_output_tokens,
+            "estimated_total_tokens": estimated_input_tokens + estimated_output_tokens,
+            "estimated_cost_usd": estimated_cost_usd,
+        },
+        "performance": {
+            "total_chapters": total_chapters,
+            "avg_generation_attempts": round(sum(attempts) / max(1, len(attempts)), 2),
+            "llm_requested_chapters": llm_requested,
+            "llm_final_chapters": llm_final,
+            "final_fallback_chapters": fallback_final,
+        },
+        "quality": {
+            "chapter_pass_rate": float(review.get("chapter_pass_rate", 0.0)),
+            "avg_overall_score": float(review.get("avg_overall_score", 0.0)),
+            "continuity_pass_status": str(continuity_review.get("pass_status", "FAIL")),
+            "publishability_pass_status": str(publishability_gate.get("pass_status", "FAIL")),
+        },
+    }
+
+
+def _benchmark_drift_payload(
+    *,
+    project_id: str,
+    installment_id: str,
+    current_analytics: dict[str, Any],
+    baseline: dict[str, Any] | None,
+) -> dict[str, Any]:
+    thresholds = _load_benchmark_thresholds()
+    current_quality = current_analytics.get("quality", {})
+    if not baseline:
+        return {
+            "schema_version": "1.0",
+            "project_id": project_id,
+            "installment_id": installment_id,
+            "created_utc": _utcnow(),
+            "baseline_available": False,
+            "pass_status": "PASS_WITH_NOTES",
+            "summary": "No prior benchmark available; current run set as baseline.",
+            "deltas": {},
+            "alerts": [],
+        }
+    baseline_quality = baseline.get("quality", {})
+    delta_score = round(float(current_quality.get("avg_overall_score", 0.0)) - float(baseline_quality.get("avg_overall_score", 0.0)), 3)
+    delta_pass_rate = round(float(current_quality.get("chapter_pass_rate", 0.0)) - float(baseline_quality.get("chapter_pass_rate", 0.0)), 3)
+    delta_cost = round(
+        float(current_analytics.get("cost", {}).get("estimated_cost_usd", 0.0))
+        - float(baseline.get("cost", {}).get("estimated_cost_usd", 0.0)),
+        4,
+    )
+
+    alerts: list[dict[str, Any]] = []
+    if delta_score < float(thresholds["quality_drop_fail"]):
+        alerts.append({"type": "quality_drop", "severity": "high", "note": f"Average score dropped by {abs(delta_score):.3f}."})
+    elif delta_score < float(thresholds["quality_drop_warn"]):
+        alerts.append({"type": "quality_drop", "severity": "medium", "note": f"Average score dropped by {abs(delta_score):.3f}."})
+    if delta_pass_rate < float(thresholds["pass_rate_drop_fail"]):
+        alerts.append({"type": "pass_rate_drop", "severity": "high", "note": f"Chapter pass rate dropped by {abs(delta_pass_rate):.3f}."})
+    if (
+        str(current_quality.get("continuity_pass_status", "FAIL")).upper() != "PASS"
+        and str(baseline_quality.get("continuity_pass_status", "FAIL")).upper() == "PASS"
+    ):
+        alerts.append({"type": "continuity_regression", "severity": "high", "note": "Continuity regressed from PASS to non-PASS."})
+    if delta_cost > max(
+        float(thresholds["cost_increase_warn_abs"]),
+        float(baseline.get("cost", {}).get("estimated_cost_usd", 0.0)) * float(thresholds["cost_increase_warn_ratio"]),
+    ):
+        alerts.append({"type": "cost_increase", "severity": "medium", "note": f"Estimated cost increased by {delta_cost:.4f} USD."})
+
+    pass_status = "PASS" if not alerts else ("FAIL" if any(item["severity"] == "high" for item in alerts) else "PASS_WITH_NOTES")
+    return {
+        "schema_version": "1.0",
+        "project_id": project_id,
+        "installment_id": installment_id,
+        "created_utc": _utcnow(),
+        "baseline_available": True,
+        "baseline_installment_id": baseline.get("installment_id"),
+        "pass_status": pass_status,
+        "summary": "Quality drift check against previous benchmark completed.",
+        "deltas": {
+            "avg_overall_score": delta_score,
+            "chapter_pass_rate": delta_pass_rate,
+            "estimated_cost_usd": delta_cost,
+        },
+        "alerts": alerts,
+    }
+
+
+def _experiment_tracker_payload(
+    *,
+    project_id: str,
+    installment_id: str,
+    intake: dict[str, Any],
+    review: dict[str, Any],
+    analytics: dict[str, Any],
+) -> dict[str, Any]:
+    cfg = get_settings()
+    return {
+        "schema_version": "1.0",
+        "project_id": project_id,
+        "installment_id": installment_id,
+        "recorded_utc": _utcnow(),
+        "experiment": {
+            "generation_preset": _bookgen_generation_preset(),
+            "llm_provider_profile": str(getattr(cfg, "llm_provider_profile", "default")),
+            "llm_model": str(getattr(cfg, "llm_model", "") or ""),
+            "bookgen_use_llm": bool(getattr(cfg, "bookgen_use_llm", False)),
+            "bookgen_eval_use_llm": bool(getattr(cfg, "bookgen_eval_use_llm", False)),
+            "bookgen_rewrite_use_llm": bool(getattr(cfg, "bookgen_rewrite_use_llm", False)),
+            "bookgen_editorial_stage_gate": bool(getattr(cfg, "bookgen_editorial_stage_gate", True)),
+            "prompt_pack_version": str(intake.get("prompt_pack_version", "")),
+            "rubric_version": str(intake.get("rubric_version", "")),
+            "genre": str(intake.get("genre", "")),
+        },
+        "outcomes": {
+            "chapter_pass_rate": float(review.get("chapter_pass_rate", 0.0)),
+            "avg_overall_score": float(review.get("avg_overall_score", 0.0)),
+            "estimated_cost_usd": float(analytics.get("cost", {}).get("estimated_cost_usd", 0.0)),
+            "estimated_total_tokens": int(analytics.get("cost", {}).get("estimated_total_tokens", 0)),
+        },
+    }
+
+
+def _proof_balance_status(text: str) -> dict[str, Any]:
+    pairs = {"(": ")", "[": "]", "{": "}", '"': '"'}
+    checks = []
+    for left, right in pairs.items():
+        left_count = text.count(left)
+        right_count = text.count(right)
+        checks.append({"token": f"{left}{right}", "left_count": left_count, "right_count": right_count, "balanced": left_count == right_count})
+    return {"balanced": all(item["balanced"] for item in checks), "checks": checks}
+
+
+def _editorial_stage_manifests(
+    *,
+    chapter_pack: dict[str, Any],
+    eval_report: dict[str, Any],
+    text: str,
+) -> dict[str, Any]:
+    chapter_id = str(chapter_pack["chapter_id"])
+    chapter_index = int(chapter_pack["chapter_index"])
+    series_id = str(chapter_pack["series_id"])
+    installment_id = str(chapter_pack["installment_id"])
+    paragraphs = _paragraphs(text)
+    heading_ok = bool(text.splitlines() and text.splitlines()[0].strip().startswith("# "))
+    has_placeholder = bool(re.search(r"\b(?:todo|tbd|placeholder|lorem ipsum)\b", text, flags=re.IGNORECASE))
+    repeated_space_hits = len(re.findall(r" {2,}", text))
+    punctuation_noise_hits = len(re.findall(r"[!?]{3,}|\.{4,}", text))
+    quote_balance = text.count('"') % 2 == 0
+    parenthetical = _proof_balance_status(text)
+    scores = eval_report.get("scores", {})
+    violations = eval_report.get("violations", [])
+    severe_violations = [item for item in violations if str(item.get("severity", "")).strip().lower() in {"high", "critical"}]
+    drift_flags = eval_report.get("drift_flags", {}) if isinstance(eval_report.get("drift_flags"), dict) else {}
+    word_count = _word_count(text)
+    profile = _chapter_policy_profile(chapter_pack)
+    editorial_cfg = profile.get("editorial", {}) if isinstance(profile, dict) else {}
+    developmental_cfg = editorial_cfg.get("developmental", {}) if isinstance(editorial_cfg, dict) else {}
+    line_cfg = editorial_cfg.get("line", {}) if isinstance(editorial_cfg, dict) else {}
+    copy_cfg = editorial_cfg.get("copy", {}) if isinstance(editorial_cfg, dict) else {}
+    terms_allow: list[str] = []
+    terms_avoid: list[str] = []
+    for item in chapter_pack.get("research_slice", {}).get("items", []):
+        if not isinstance(item, dict):
+            continue
+        terms_allow.extend(str(term).strip().lower() for term in item.get("allowed_terms", []) if str(term).strip())
+        terms_avoid.extend(str(term).strip().lower() for term in item.get("avoid_terms", []) if str(term).strip())
+    terms_allow = sorted(set(terms_allow))
+    terms_avoid = sorted(set(terms_avoid))
+    lowered = text.lower()
+    avoid_hits = sorted({term for term in terms_avoid if term in lowered})
+    allowed_hits = sorted({term for term in terms_allow if term in lowered})
+
+    character_names: list[str] = []
+    for state in chapter_pack.get("character_state_slice", []):
+        if isinstance(state, dict):
+            candidate = str(state.get("display_name", "")).strip()
+            if candidate:
+                character_names.append(candidate)
+    name_hits = [name for name in character_names if name.lower() in lowered]
+
+    active_threads = [
+        str(item).strip() for item in chapter_pack.get("continuity_slice", {}).get("active_threads", []) if str(item).strip()
+    ]
+    reference_hits = [thread for thread in active_threads if thread.lower() in lowered]
+
+    overall_score_floor = float(developmental_cfg.get("overall_score_floor", 7.5))
+    pacing_floor = float(developmental_cfg.get("pacing_floor", 7.0))
+    structural_clarity_floor = float(developmental_cfg.get("structural_clarity_floor", 7.0))
+    voice_stability_floor = float(line_cfg.get("voice_stability_floor", 7.0))
+    paragraph_floor = int(line_cfg.get("paragraph_floor", 4))
+    avg_paragraph_density_max = float(line_cfg.get("avg_paragraph_density_max", 260))
+    max_double_space_hits_floor = int(copy_cfg.get("max_double_space_hits_floor", 2))
+    double_space_hits_per_paragraph_divisor = max(1, int(copy_cfg.get("double_space_hits_per_paragraph_divisor", 2)))
+
+    stage_specs = [
+        {
+            "stage_name": "developmental",
+            "purpose": "Narrative structure, escalation fit, and chapter function quality.",
+            "checks": {
+                "overall_score_floor_ok": float(eval_report.get("overall", 0.0)) >= overall_score_floor,
+                "core_structure_scores_ok": float(scores.get("pacing", 0.0)) >= pacing_floor
+                and float(scores.get("structural_clarity", 0.0)) >= structural_clarity_floor,
+                "severe_violation_free": not severe_violations,
+            },
+        },
+        {
+            "stage_name": "line",
+            "purpose": "Paragraph-level readability, flow, and voice consistency.",
+            "checks": {
+                "voice_stability_ok": float(scores.get("voice_stability", 0.0)) >= voice_stability_floor,
+                "paragraph_floor_ok": len(paragraphs) >= paragraph_floor,
+                "average_paragraph_density_ok": (word_count / max(1, len(paragraphs))) <= avg_paragraph_density_max,
+            },
+        },
+        {
+            "stage_name": "copy",
+            "purpose": "Mechanical correctness and consistency signals.",
+            "checks": {
+                "double_space_noise_ok": repeated_space_hits
+                <= max(max_double_space_hits_floor, len(paragraphs) // double_space_hits_per_paragraph_divisor),
+                "punctuation_noise_ok": punctuation_noise_hits == 0,
+                "heading_present": heading_ok,
+            },
+        },
+        {
+            "stage_name": "style",
+            "purpose": "Style-guide and consistency checks for names, terms, and references.",
+            "checks": {
+                "avoid_terms_absent_ok": not avoid_hits,
+                "character_name_reference_ok": (not character_names) or bool(name_hits),
+                "continuity_reference_ok": (not active_threads)
+                or bool(reference_hits)
+                or not bool(drift_flags.get("continuity_contradiction", False)),
+            },
+        },
+        {
+            "stage_name": "proof",
+            "purpose": "Final publish-facing sanity checks before assembly/export.",
+            "checks": {
+                "heading_present": heading_ok,
+                "placeholder_free": not has_placeholder,
+                "quote_balance_ok": quote_balance,
+                "parenthetical_balance_ok": bool(parenthetical["balanced"]),
+            },
+        },
+    ]
+
+    stage_payloads: list[dict[str, Any]] = []
+    passed = 0
+    for spec in stage_specs:
+        failing_checks = [name for name, ok in spec["checks"].items() if not ok]
+        pass_status = "PASS" if not failing_checks else "FAIL"
+        if pass_status == "PASS":
+            passed += 1
+        stage_payloads.append(
+            {
+                "schema_version": "1.0",
+                "series_id": series_id,
+                "installment_id": installment_id,
+                "chapter_id": chapter_id,
+                "chapter_index": chapter_index,
+                "stage_name": spec["stage_name"],
+                "purpose": spec["purpose"],
+                "checks": spec["checks"],
+                "issues": failing_checks,
+                "pass_status": pass_status,
+                "created_utc": _utcnow(),
+            }
+        )
+
+    summary = {
+        "schema_version": "1.0",
+        "series_id": series_id,
+        "installment_id": installment_id,
+        "chapter_id": chapter_id,
+        "chapter_index": chapter_index,
+        "stages": stage_payloads,
+        "pass_status": "PASS" if passed == len(stage_payloads) else "FAIL",
+        "counts": {
+            "total_stages": len(stage_payloads),
+            "passed_stages": passed,
+            "failed_stages": len(stage_payloads) - passed,
+        },
+        "signals": {
+            "word_count": word_count,
+            "paragraphs": len(paragraphs),
+            "double_space_hits": repeated_space_hits,
+            "punctuation_noise_hits": punctuation_noise_hits,
+            "placeholder_hits": 1 if has_placeholder else 0,
+            "style_guide": {
+                "allowed_terms_defined": len(terms_allow),
+                "allowed_terms_hits": allowed_hits,
+                "avoid_terms_hits": avoid_hits,
+                "character_name_hits": name_hits,
+                "continuity_reference_hits": reference_hits,
+            },
+            "proof_balance": parenthetical,
+        },
+        "created_utc": _utcnow(),
+    }
+    return {"stages": stage_payloads, "summary": summary}
 
 
 def _salient_terms(text: str, *, limit: int = 8) -> list[str]:
@@ -4035,6 +4785,17 @@ def _release_state_payload(
         "updated_utc": _utcnow(),
         "notes": notes or [],
         "approval": approval or {"locked": False},
+        "workflow": {
+            "allowed_states": [
+                "editorial_hold",
+                "editorial_reviewed",
+                "approved_for_export",
+                "manuscript_locked",
+                "approved_for_publication",
+            ],
+            "release_schedule_key": _release_schedule_key(project_id, installment_id),
+            "revision_request_manager_key": _revision_request_manager_key(project_id, installment_id),
+        },
     }
 
 
@@ -4438,6 +5199,14 @@ def run_chapter_review(*, project_id: str) -> dict[str, Any]:
     scores: list[float] = []
     passed = 0
     failed = 0
+    editorial_stage_totals: dict[str, dict[str, int]] = {
+        "developmental": {"passed": 0, "failed": 0},
+        "line": {"passed": 0, "failed": 0},
+        "copy": {"passed": 0, "failed": 0},
+        "style": {"passed": 0, "failed": 0},
+        "proof": {"passed": 0, "failed": 0},
+    }
+    editorial_gate_enabled = _bookgen_editorial_stage_gate_enabled()
 
     for chapter in outline["chapters"]:
         chapter_index = int(chapter["chapter_index"])
@@ -4527,8 +5296,33 @@ def run_chapter_review(*, project_id: str) -> dict[str, Any]:
                 best_text = _rewrite_chapter_text(best_text, chapter_pack, eval_report)
 
         assert best_eval is not None
+        editorial = _editorial_stage_manifests(
+            chapter_pack=chapter_pack,
+            eval_report=best_eval,
+            text=best_text,
+        )
+        for stage_payload in editorial["stages"]:
+            _validate_structured_payload(stage_payload, "editorial_stage")
+            _write_yaml(store, _editorial_stage_key(root, str(stage_payload["stage_name"])), stage_payload, artifacts)
+            bucket = editorial_stage_totals.get(str(stage_payload["stage_name"]))
+            if bucket is not None:
+                if stage_payload["pass_status"] == "PASS":
+                    bucket["passed"] += 1
+                else:
+                    bucket["failed"] += 1
+        _validate_structured_payload(editorial["summary"], "editorial_stage_summary")
+        _write_yaml(store, _editorial_stage_summary_key(root), editorial["summary"], artifacts)
+        if editorial_gate_enabled and editorial["summary"]["pass_status"] != "PASS":
+            best_eval["violations"].append(
+                {
+                    "type": "editorial_stage_gate_failure",
+                    "severity": "high",
+                    "note": "One or more editorial stages failed (developmental/line/copy/style/proof).",
+                }
+            )
+            best_eval["pass_status"] = "FAIL"
         _write_yaml(store, eval_key, best_eval, artifacts)
-        _write_yaml(store, editorial_qc_key, best_eval, artifacts)
+        _write_yaml(store, editorial_qc_key, editorial["summary"] if editorial_gate_enabled else best_eval, artifacts)
         if best_eval["pass_status"] == "FAIL":
             failed += 1
         else:
@@ -4565,17 +5359,40 @@ def run_chapter_review(*, project_id: str) -> dict[str, Any]:
         "failed_chapters": failed,
         "chapter_pass_rate": passed / max(1, len(outline["chapters"])),
         "avg_overall_score": round(mean(scores), 2) if scores else 0.0,
+        "editorial_stage_gate_enabled": editorial_gate_enabled,
+        "editorial_stage_totals": editorial_stage_totals,
     }
     summary_key = f"{_project_root(project_id, planning['installment_id'])}/eval/global.json"
     store.put_json(summary_key, summary)
     artifacts[summary_key] = _hash_payload(summary)
+    publishability_gate = {
+        "schema_version": "1.0",
+        "project_id": project_id,
+        "installment_id": planning["installment_id"],
+        "editorial_stage_gate_enabled": editorial_gate_enabled,
+        "checks": {
+            "all_chapters_passed_editorial": failed == 0,
+            "editorial_stages_all_passed": all(item["failed"] == 0 for item in editorial_stage_totals.values()),
+        },
+        "stage_counts": editorial_stage_totals,
+        "pass_status": "PASS"
+        if failed == 0 and (not editorial_gate_enabled or all(item["failed"] == 0 for item in editorial_stage_totals.values()))
+        else "FAIL",
+        "created_utc": _utcnow(),
+    }
+    _validate_structured_payload(publishability_gate, "publishability_gate")
+    publishability_key = _publishability_gate_key(project_id, planning["installment_id"])
+    _write_yaml(store, publishability_key, publishability_gate, artifacts)
     release_state = _release_state_payload(
         project_id=project_id,
         installment_id=planning["installment_id"],
-        status="editorial_reviewed" if failed == 0 else "editorial_hold",
-        notes=[] if failed == 0 else ["One or more chapters failed editorial review."],
+        status="editorial_reviewed" if publishability_gate["pass_status"] == "PASS" else "editorial_hold",
+        notes=[]
+        if publishability_gate["pass_status"] == "PASS"
+        else ["One or more chapters failed editorial review or publishability gate checks."],
     )
     release_state_key = _release_state_key(project_id, planning["installment_id"])
+    _validate_structured_payload(release_state, "release_state")
     _write_yaml(store, release_state_key, release_state, artifacts)
     commit_id = _commit_stage_checkpoint(
         project_id=project_id,
@@ -4603,6 +5420,14 @@ def run_assembly_export(*, project_id: str) -> dict[str, Any]:
     installment_pack = _read_yaml(store, planning["installment_pack_key"])
     outline = _read_yaml(store, planning["outline_key"])
     review = store.get_json(f"{_project_root(project_id, planning['installment_id'])}/eval/global.json")
+    generation_summary_key = f"{_project_root(project_id, planning['installment_id'])}/draft/generation_summary.json"
+    generation_summary = store.get_json(generation_summary_key) if store.exists(generation_summary_key) else {"chapters": []}
+    publishability_key = _publishability_gate_key(project_id, planning["installment_id"])
+    if not store.exists(publishability_key):
+        raise RuntimeError("Assembly blocked: publishability gate artifact is missing.")
+    publishability_gate = _read_yaml(store, publishability_key)
+    if str(publishability_gate.get("pass_status", "FAIL")).strip().upper() != "PASS":
+        raise RuntimeError("Assembly blocked: publishability gate failed.")
     installment_title = _effective_installment_title(constitution, installment_pack)
 
     total = int(review["total_chapters"])
@@ -4636,7 +5461,11 @@ def run_assembly_export(*, project_id: str) -> dict[str, Any]:
         _write_yaml(store, _release_state_key(project_id, planning["installment_id"]), release_state, artifacts)
         raise RuntimeError("Assembly blocked: installment continuity review failed.")
 
-    manuscript = "\n\n---\n\n".join(sections).strip() + "\n"
+    front_matter = _front_matter_markdown(constitution=constitution, installment_pack=installment_pack).strip()
+    toc_matter = _toc_markdown(outline=outline).strip()
+    back_matter = _back_matter_markdown(constitution=constitution, installment_pack=installment_pack).strip()
+    manuscript_parts = [front_matter, toc_matter] + sections + [back_matter]
+    manuscript = "\n\n---\n\n".join(part for part in manuscript_parts if part).strip() + "\n"
     manuscript_key = f"{_project_root(project_id, planning['installment_id'])}/assembly/manuscript.md"
     store.put_text(manuscript_key, manuscript)
     artifacts[manuscript_key] = _hash_text(manuscript)
@@ -4670,6 +5499,67 @@ def run_assembly_export(*, project_id: str) -> dict[str, Any]:
         artifacts[docx_key] = hashlib.sha256(raw).hexdigest()
         export_keys.append(docx_key)
 
+    if "epub" in installment_pack["output_targets"]["output_formats"]:
+        epub_key = f"{export_root}/manuscript.epub"
+        author = str(constitution.get("author", "")).strip() or str(constitution.get("constitution_id", "BookGen"))
+        epub_raw = _manuscript_to_epub_bytes(
+            title=installment_title,
+            author=author,
+            sections=[front_matter, toc_matter] + sections + [back_matter],
+            chapter_titles=["Front Matter", "Table of Contents"]
+            + [str(ch.get("title", f"Chapter {idx + 1}")) for idx, ch in enumerate(outline["chapters"])]
+            + ["Back Matter"],
+        )
+        _write_binary(store, epub_key, epub_raw, "application/epub+zip")
+        artifacts[epub_key] = hashlib.sha256(epub_raw).hexdigest()
+        export_keys.append(epub_key)
+
+    if "pdf" in installment_pack["output_targets"]["output_formats"]:
+        pdf_key = f"{export_root}/manuscript.pdf"
+        pdf_raw = _manuscript_to_pdf_bytes(
+            title=installment_title,
+            sections=[front_matter, toc_matter] + sections + [back_matter],
+        )
+        _write_binary(store, pdf_key, pdf_raw, "application/pdf")
+        artifacts[pdf_key] = hashlib.sha256(pdf_raw).hexdigest()
+        export_keys.append(pdf_key)
+
+    metadata_pack = _metadata_pack(
+        constitution=constitution,
+        installment_pack=installment_pack,
+        outline=outline,
+    )
+    _validate_structured_payload(metadata_pack, "metadata_pack")
+    publication_root = f"{_project_root(project_id, planning['installment_id'])}/publication_package"
+    front_key = f"{publication_root}/front_matter.md"
+    toc_key = f"{publication_root}/toc.md"
+    back_key = f"{publication_root}/back_matter.md"
+    metadata_pack_key = f"{publication_root}/metadata_pack.yaml"
+    store.put_text(front_key, front_matter + "\n")
+    artifacts[front_key] = _hash_text(front_matter + "\n")
+    store.put_text(toc_key, toc_matter + "\n")
+    artifacts[toc_key] = _hash_text(toc_matter + "\n")
+    store.put_text(back_key, back_matter + "\n")
+    artifacts[back_key] = _hash_text(back_matter + "\n")
+    _write_yaml(store, metadata_pack_key, metadata_pack, artifacts)
+    publication_manifest = {
+        "schema_version": "1.0",
+        "project_id": project_id,
+        "installment_id": planning["installment_id"],
+        "artifact_keys": {
+            "front_matter": front_key,
+            "toc": toc_key,
+            "back_matter": back_key,
+            "metadata_pack": metadata_pack_key,
+            "manuscript": manuscript_key,
+            "exports": export_keys,
+        },
+        "created_utc": _utcnow(),
+    }
+    _validate_structured_payload(publication_manifest, "publication_package")
+    publication_manifest_key = f"{publication_root}/publication_manifest.yaml"
+    _write_yaml(store, publication_manifest_key, publication_manifest, artifacts)
+
     metadata = {
         "project_id": project_id,
         "installment_id": planning["installment_id"],
@@ -4685,13 +5575,73 @@ def run_assembly_export(*, project_id: str) -> dict[str, Any]:
             installment_pack["intent"]["narrative_role"],
         ],
         "continuity_review_key": continuity_key,
+        "publishability_gate_key": publishability_key,
         "manuscript_key": manuscript_key,
         "export_keys": export_keys,
+        "publication_manifest_key": publication_manifest_key,
+        "metadata_pack_key": metadata_pack_key,
+        "run_analytics_key": _analytics_run_key(project_id, planning["installment_id"]),
+        "benchmark_drift_key": _benchmark_drift_key(project_id, planning["installment_id"]),
+        "experiment_tracker_key": _experiment_tracker_key(project_id, planning["installment_id"]),
         "checksum": hashlib.sha256(manuscript.encode("utf-8")).hexdigest(),
     }
+    _validate_structured_payload(metadata, "export_manifest")
     metadata_key = f"{export_root}/export_manifest.json"
     store.put_json(metadata_key, metadata)
     artifacts[metadata_key] = _hash_payload(metadata)
+
+    run_analytics = _run_analytics_payload(
+        project_id=project_id,
+        installment_id=planning["installment_id"],
+        intake=intake,
+        review=review,
+        generation_summary=generation_summary,
+        continuity_review=continuity_review,
+        publishability_gate=publishability_gate,
+    )
+    _validate_structured_payload(run_analytics, "run_analytics")
+    analytics_key = _analytics_run_key(project_id, planning["installment_id"])
+    _write_yaml(store, analytics_key, run_analytics, artifacts)
+
+    history_key = _benchmark_history_key(project_id)
+    history = store.get_json(history_key) if store.exists(history_key) else {"runs": []}
+    prior_runs = [item for item in history.get("runs", []) if isinstance(item, dict)]
+    baseline = prior_runs[-1] if prior_runs else None
+    benchmark_drift = _benchmark_drift_payload(
+        project_id=project_id,
+        installment_id=planning["installment_id"],
+        current_analytics=run_analytics,
+        baseline=baseline,
+    )
+    _validate_structured_payload(benchmark_drift, "benchmark_drift")
+    benchmark_key = _benchmark_drift_key(project_id, planning["installment_id"])
+    _write_yaml(store, benchmark_key, benchmark_drift, artifacts)
+
+    experiment_tracker = _experiment_tracker_payload(
+        project_id=project_id,
+        installment_id=planning["installment_id"],
+        intake=intake,
+        review=review,
+        analytics=run_analytics,
+    )
+    _validate_structured_payload(experiment_tracker, "experiment_tracker")
+    experiment_key = _experiment_tracker_key(project_id, planning["installment_id"])
+    _write_yaml(store, experiment_key, experiment_tracker, artifacts)
+
+    history_entry = {
+        "project_id": project_id,
+        "installment_id": planning["installment_id"],
+        "recorded_utc": _utcnow(),
+        "quality": run_analytics["quality"],
+        "cost": run_analytics["cost"],
+        "experiment": experiment_tracker["experiment"],
+    }
+    prior_runs.append(history_entry)
+    if len(prior_runs) > 25:
+        prior_runs = prior_runs[-25:]
+    history_payload = {"schema_version": "1.0", "project_id": project_id, "runs": prior_runs}
+    store.put_json(history_key, history_payload)
+    artifacts[history_key] = _hash_payload(history_payload)
 
     _log_mlflow_summary(
         project_id,
@@ -4703,13 +5653,20 @@ def run_assembly_export(*, project_id: str) -> dict[str, Any]:
         },
         metadata,
     )
+    current_release = _load_release_state(store, project_id, planning["installment_id"]) or {}
+    next_status = (
+        "editorial_reviewed"
+        if str(current_release.get("status", "")).strip().lower() in {"editorial_reviewed", "awaiting_editorial_approval", ""}
+        else str(current_release.get("status"))
+    )
     release_state = _release_state_payload(
         project_id=project_id,
         installment_id=planning["installment_id"],
-        status="awaiting_editorial_approval",
-        notes=["Assembly and export completed. Editorial approval still required before publication."],
+        status=next_status,
+        notes=["Assembly and export completed. Ready for approval workflow progression."],
         approval={"locked": False, "approval_record_key": _approval_record_key(project_id, planning["installment_id"])},
     )
+    _validate_structured_payload(release_state, "release_state")
     _write_yaml(store, _release_state_key(project_id, planning["installment_id"]), release_state, artifacts)
     commit_id = _commit_stage_checkpoint(
         project_id=project_id,
@@ -4738,6 +5695,14 @@ def inspect_chapter(*, project_id: str, chapter_index: int, installment_id: str 
     draft_qc_history = _read_yaml(store, f"{root}/draft_qc_history.yaml") if store.exists(f"{root}/draft_qc_history.yaml") else None
     generation_trace = _read_yaml(store, f"{root}/generation_trace.yaml") if store.exists(f"{root}/generation_trace.yaml") else None
     editorial_qc = _read_yaml(store, f"{root}/editorial_qc.yaml") if store.exists(f"{root}/editorial_qc.yaml") else None
+    editorial_stages = {
+        "developmental": _read_yaml(store, _editorial_stage_key(root, "developmental")) if store.exists(_editorial_stage_key(root, "developmental")) else None,
+        "line": _read_yaml(store, _editorial_stage_key(root, "line")) if store.exists(_editorial_stage_key(root, "line")) else None,
+        "copy": _read_yaml(store, _editorial_stage_key(root, "copy")) if store.exists(_editorial_stage_key(root, "copy")) else None,
+        "style": _read_yaml(store, _editorial_stage_key(root, "style")) if store.exists(_editorial_stage_key(root, "style")) else None,
+        "proof": _read_yaml(store, _editorial_stage_key(root, "proof")) if store.exists(_editorial_stage_key(root, "proof")) else None,
+    }
+    editorial_stage_summary = _read_yaml(store, _editorial_stage_summary_key(root)) if store.exists(_editorial_stage_summary_key(root)) else None
     eval_report = _read_yaml(store, f"{root}/eval.yaml") if store.exists(f"{root}/eval.yaml") else None
     final_text = store.get_text(f"{root}/final.md") if store.exists(f"{root}/final.md") else None
 
@@ -4764,6 +5729,8 @@ def inspect_chapter(*, project_id: str, chapter_index: int, installment_id: str 
         "draft_qc_history": draft_qc_history,
         "generation_trace": generation_trace,
         "editorial_qc": editorial_qc,
+        "editorial_stages": editorial_stages,
+        "editorial_stage_summary": editorial_stage_summary,
         "eval_report": eval_report,
         "rewrite_contracts": rewrite_contracts,
         "has_final_text": final_text is not None,
@@ -4793,46 +5760,151 @@ def approve_installment(
     planning = _load_planning_manifest(project_id, store)
     resolved_installment_id = installment_id or planning["installment_id"]
     normalized = decision.strip().lower()
-    if normalized not in {"approve", "hold", "lock"}:
-        raise RuntimeError("Decision must be one of: approve, hold, lock")
+    if normalized not in {"approve", "hold", "lock", "publish"}:
+        raise RuntimeError("Decision must be one of: approve, hold, lock, publish")
     continuity_key = _continuity_review_key(project_id, resolved_installment_id)
-    if normalized in {"approve", "lock"} and not store.exists(continuity_key):
+    publishability_key = _publishability_gate_key(project_id, resolved_installment_id)
+    if normalized in {"approve", "lock", "publish"} and not store.exists(continuity_key):
         raise RuntimeError("Approval blocked: continuity review artifact is missing.")
+    if normalized in {"approve", "lock", "publish"} and not store.exists(publishability_key):
+        raise RuntimeError("Approval blocked: publishability gate artifact is missing.")
+    if normalized in {"approve", "lock", "publish"}:
+        gate = _read_yaml(store, publishability_key)
+        if str(gate.get("pass_status", "FAIL")).strip().upper() != "PASS":
+            raise RuntimeError("Approval blocked: publishability gate failed.")
 
     current_release = (
         _read_yaml(store, _release_state_key(project_id, resolved_installment_id))
         if store.exists(_release_state_key(project_id, resolved_installment_id))
         else _release_state_payload(project_id=project_id, installment_id=resolved_installment_id, status="editorial_hold")
     )
-    status_map = {
-        "approve": "approved_for_export",
-        "hold": "editorial_hold",
-        "lock": "manuscript_locked",
+    target_status = _release_transition(current_status=str(current_release.get("status", "editorial_hold")), decision=normalized)
+    approval_key = _approval_record_key(project_id, resolved_installment_id)
+    existing_record = _read_yaml(store, approval_key) if store.exists(approval_key) else None
+    events = list((existing_record or {}).get("events", [])) if isinstance(existing_record, dict) else []
+    event = {
+        "decision": normalized,
+        "note": note.strip(),
+        "from_status": str(current_release.get("status", "editorial_hold")),
+        "to_status": target_status,
+        "recorded_utc": _utcnow(),
     }
+    events.append(event)
     approval_record = {
         "schema_version": "1.0",
         "project_id": project_id,
         "installment_id": resolved_installment_id,
-        "decision": normalized,
-        "note": note.strip(),
-        "recorded_utc": _utcnow(),
+        "latest_decision": normalized,
+        "latest_note": note.strip(),
+        "recorded_utc": event["recorded_utc"],
+        "events": events,
     }
-    approval_key = _approval_record_key(project_id, resolved_installment_id)
+    _validate_structured_payload(approval_record, "approval_record")
     store.put_yaml(approval_key, approval_record)
     release_state = _release_state_payload(
         project_id=project_id,
         installment_id=resolved_installment_id,
-        status=status_map[normalized],
+        status=target_status,
         notes=[note.strip()] if note.strip() else [],
         approval={
-            "locked": normalized == "lock",
+            "locked": target_status in {"manuscript_locked", "approved_for_publication"},
             "decision": normalized,
             "approval_record_key": approval_key,
             "previous_status": current_release.get("status"),
         },
     )
+    _validate_structured_payload(release_state, "release_state")
     store.put_yaml(_release_state_key(project_id, resolved_installment_id), release_state)
     return release_state
+
+
+def request_revision(
+    *,
+    project_id: str,
+    installment_id: str | None = None,
+    reason: str,
+    requested_by: str = "editor",
+    severity: str = "major",
+) -> dict[str, Any]:
+    store = ObjectStore()
+    planning = _load_planning_manifest(project_id, store)
+    resolved_installment_id = installment_id or planning["installment_id"]
+    current_release = (
+        _read_yaml(store, _release_state_key(project_id, resolved_installment_id))
+        if store.exists(_release_state_key(project_id, resolved_installment_id))
+        else _release_state_payload(project_id=project_id, installment_id=resolved_installment_id, status="editorial_hold")
+    )
+    manager_key = _revision_request_manager_key(project_id, resolved_installment_id)
+    existing = _read_yaml(store, manager_key) if store.exists(manager_key) else None
+    requests = list((existing or {}).get("requests", [])) if isinstance(existing, dict) else []
+    request_id = f"rev-{len(requests) + 1:03d}"
+    request = {
+        "request_id": request_id,
+        "reason": reason.strip(),
+        "requested_by": requested_by.strip() or "editor",
+        "severity": severity.strip().lower() or "major",
+        "status": "open",
+        "created_utc": _utcnow(),
+    }
+    requests.append(request)
+    manager = {
+        "schema_version": "1.0",
+        "project_id": project_id,
+        "installment_id": resolved_installment_id,
+        "open_requests": len([item for item in requests if str(item.get("status", "")).lower() == "open"]),
+        "requests": requests,
+        "updated_utc": _utcnow(),
+    }
+    _validate_structured_payload(manager, "revision_request_manager")
+    store.put_yaml(manager_key, manager)
+
+    release_state = _release_state_payload(
+        project_id=project_id,
+        installment_id=resolved_installment_id,
+        status="editorial_hold",
+        notes=[f"Revision requested ({request_id}): {reason.strip()}"],
+        approval={
+            "locked": False,
+            "decision": "revision_requested",
+            "previous_status": current_release.get("status"),
+            "revision_request_manager_key": manager_key,
+        },
+    )
+    _validate_structured_payload(release_state, "release_state")
+    store.put_yaml(_release_state_key(project_id, resolved_installment_id), release_state)
+    return {"release_state": release_state, "revision_request_manager": manager, "request": request}
+
+
+def schedule_release(
+    *,
+    project_id: str,
+    installment_id: str | None = None,
+    planned_date: str | None = None,
+    status: str = "planned",
+    note: str = "",
+) -> dict[str, Any]:
+    store = ObjectStore()
+    planning = _load_planning_manifest(project_id, store)
+    resolved_installment_id = installment_id or planning["installment_id"]
+    normalized_status = status.strip().lower()
+    if normalized_status not in {"planned", "hold", "release"}:
+        raise RuntimeError("Release schedule status must be one of: planned, hold, release")
+    if planned_date:
+        _ = datetime.strptime(planned_date.strip(), "%Y-%m-%d")
+
+    schedule_payload = {
+        "schema_version": "1.0",
+        "project_id": project_id,
+        "installment_id": resolved_installment_id,
+        "planned_date": planned_date.strip() if planned_date else None,
+        "status": {"planned": "planned", "hold": "on_hold", "release": "released"}[normalized_status],
+        "note": note.strip(),
+        "updated_utc": _utcnow(),
+    }
+    schedule_key = _release_schedule_key(project_id, resolved_installment_id)
+    _validate_structured_payload(schedule_payload, "release_schedule")
+    store.put_yaml(schedule_key, schedule_payload)
+    return schedule_payload
 
 
 def operator_report(*, project_id: str, installment_id: str | None = None) -> dict[str, Any]:
@@ -4843,15 +5915,76 @@ def operator_report(*, project_id: str, installment_id: str | None = None) -> di
     generation_key = f"{_project_root(project_id, resolved_installment_id)}/draft/generation_summary.json"
     release_key = _release_state_key(project_id, resolved_installment_id)
     continuity_key = _continuity_review_key(project_id, resolved_installment_id)
+    publishability_key = _publishability_gate_key(project_id, resolved_installment_id)
+    analytics_key = _analytics_run_key(project_id, resolved_installment_id)
+    benchmark_key = _benchmark_drift_key(project_id, resolved_installment_id)
+    experiment_key = _experiment_tracker_key(project_id, resolved_installment_id)
+    revision_key = _revision_request_manager_key(project_id, resolved_installment_id)
+    schedule_key = _release_schedule_key(project_id, resolved_installment_id)
+    approval_key = _approval_record_key(project_id, resolved_installment_id)
     export_key = f"exports/{project_id}/{resolved_installment_id}/export_manifest.json"
     return {
         "project_id": project_id,
         "installment_id": resolved_installment_id,
         "generation_summary": store.get_json(generation_key) if store.exists(generation_key) else None,
         "review_summary": store.get_json(review_key) if store.exists(review_key) else None,
+        "publishability_gate": _read_yaml(store, publishability_key) if store.exists(publishability_key) else None,
+        "run_analytics": _read_yaml(store, analytics_key) if store.exists(analytics_key) else None,
+        "benchmark_drift": _read_yaml(store, benchmark_key) if store.exists(benchmark_key) else None,
+        "experiment_tracker": _read_yaml(store, experiment_key) if store.exists(experiment_key) else None,
         "continuity_review": _read_yaml(store, continuity_key) if store.exists(continuity_key) else None,
         "release_state": _read_yaml(store, release_key) if store.exists(release_key) else None,
+        "approval_record": _read_yaml(store, approval_key) if store.exists(approval_key) else None,
+        "revision_request_manager": _read_yaml(store, revision_key) if store.exists(revision_key) else None,
+        "release_schedule": _read_yaml(store, schedule_key) if store.exists(schedule_key) else None,
         "export_manifest": store.get_json(export_key) if store.exists(export_key) else None,
+    }
+
+
+def analytics_report(*, project_id: str, installment_id: str | None = None) -> dict[str, Any]:
+    store = ObjectStore()
+    planning = _load_planning_manifest(project_id, store)
+    resolved_installment_id = installment_id or planning["installment_id"]
+
+    run_analytics_key = _analytics_run_key(project_id, resolved_installment_id)
+    benchmark_key = _benchmark_drift_key(project_id, resolved_installment_id)
+    experiment_key = _experiment_tracker_key(project_id, resolved_installment_id)
+    history_key = _benchmark_history_key(project_id)
+
+    run_analytics = _read_yaml(store, run_analytics_key) if store.exists(run_analytics_key) else None
+    benchmark_drift = _read_yaml(store, benchmark_key) if store.exists(benchmark_key) else None
+    experiment_tracker = _read_yaml(store, experiment_key) if store.exists(experiment_key) else None
+    history = store.get_json(history_key) if store.exists(history_key) else {"runs": []}
+    history_runs = [item for item in history.get("runs", []) if isinstance(item, dict)]
+
+    score_values = [float(item.get("quality", {}).get("avg_overall_score", 0.0)) for item in history_runs if item.get("quality")]
+    pass_rate_values = [float(item.get("quality", {}).get("chapter_pass_rate", 0.0)) for item in history_runs if item.get("quality")]
+    cost_values = [float(item.get("cost", {}).get("estimated_cost_usd", 0.0)) for item in history_runs if item.get("cost")]
+    baseline = history_runs[-1] if history_runs else None
+    recent = history_runs[-5:]
+
+    return {
+        "project_id": project_id,
+        "installment_id": resolved_installment_id,
+        "current": {
+            "run_analytics": run_analytics,
+            "benchmark_drift": benchmark_drift,
+            "experiment_tracker": experiment_tracker,
+        },
+        "portfolio": {
+            "history_run_count": len(history_runs),
+            "avg_overall_score": round(sum(score_values) / max(1, len(score_values)), 3) if score_values else None,
+            "avg_pass_rate": round(sum(pass_rate_values) / max(1, len(pass_rate_values)), 3) if pass_rate_values else None,
+            "avg_estimated_cost_usd": round(sum(cost_values) / max(1, len(cost_values)), 4) if cost_values else None,
+            "latest_baseline_installment_id": baseline.get("installment_id") if baseline else None,
+            "recent_runs": recent,
+        },
+        "artifact_keys": {
+            "run_analytics_key": run_analytics_key,
+            "benchmark_drift_key": benchmark_key,
+            "experiment_tracker_key": experiment_key,
+            "benchmark_history_key": history_key,
+        },
     }
 
 

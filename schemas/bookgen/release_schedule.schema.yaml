@@ -1,0 +1,29 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ReleaseSchedule
+type: object
+required:
+  - schema_version
+  - project_id
+  - installment_id
+  - planned_date
+  - status
+  - note
+  - updated_utc
+properties:
+  schema_version:
+    type: string
+  project_id:
+    type: string
+  installment_id:
+    type: string
+  planned_date:
+    type:
+      - string
+      - "null"
+  status:
+    enum: [planned, on_hold, released]
+  note:
+    type: string
+  updated_utc:
+    type: string
+additionalProperties: true

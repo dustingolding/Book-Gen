@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     bookgen_title_critic_use_llm: bool = Field(default=False, alias="BOOKGEN_TITLE_CRITIC_USE_LLM")
     bookgen_title_critic_shortlist_size: int = Field(default=5, alias="BOOKGEN_TITLE_CRITIC_SHORTLIST_SIZE")
     bookgen_structural_retry_limit: int = Field(default=0, alias="BOOKGEN_STRUCTURAL_RETRY_LIMIT")
+    bookgen_editorial_stage_gate: bool = Field(default=True, alias="BOOKGEN_EDITORIAL_STAGE_GATE")
     bookgen_allow_lock_override: bool = Field(default=False, alias="BOOKGEN_ALLOW_LOCK_OVERRIDE")
     factpack_use_llm: bool = Field(default=False, alias="FACTPACK_USE_LLM")
     allow_synthetic_fallback: bool = Field(default=False, alias="ALLOW_SYNTHETIC_FALLBACK")

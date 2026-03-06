@@ -1,0 +1,33 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ApprovalRecord
+type: object
+required:
+  - schema_version
+  - project_id
+  - installment_id
+  - latest_decision
+  - recorded_utc
+  - events
+properties:
+  schema_version:
+    type: string
+  project_id:
+    type: string
+  installment_id:
+    type: string
+  latest_decision:
+    type: string
+  latest_note:
+    type: string
+  recorded_utc:
+    type: string
+  events:
+    type: array
+    items:
+      type: object
+      required:
+        - decision
+        - from_status
+        - to_status
+        - recorded_utc
+additionalProperties: true

@@ -1,0 +1,38 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: EditorialStageSummary
+type: object
+required:
+  - schema_version
+  - series_id
+  - installment_id
+  - chapter_id
+  - chapter_index
+  - stages
+  - pass_status
+  - counts
+  - signals
+  - created_utc
+properties:
+  schema_version:
+    type: string
+  series_id:
+    type: string
+  installment_id:
+    type: string
+  chapter_id:
+    type: string
+  chapter_index:
+    type: integer
+    minimum: 1
+  stages:
+    type: array
+    minItems: 1
+  pass_status:
+    enum: [PASS, FAIL]
+  counts:
+    type: object
+  signals:
+    type: object
+  created_utc:
+    type: string
+additionalProperties: true

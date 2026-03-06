@@ -1,0 +1,24 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ExperimentTracker
+type: object
+required:
+  - schema_version
+  - project_id
+  - installment_id
+  - recorded_utc
+  - experiment
+  - outcomes
+properties:
+  schema_version:
+    type: string
+  project_id:
+    type: string
+  installment_id:
+    type: string
+  recorded_utc:
+    type: string
+  experiment:
+    type: object
+  outcomes:
+    type: object
+additionalProperties: true
