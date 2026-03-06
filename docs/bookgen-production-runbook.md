@@ -249,3 +249,20 @@ Local helper commands:
   --collect-only \
   --run-id <run-id>
 ```
+
+## Nightly Integrity Monitor
+
+Workflow: `bookgen-nightly-integrity.yml`
+
+- Schedule: daily (06:17 UTC)
+- Default project: `audit-canary-001`
+- Action: runs collect-only handoff integrity verification against latest successful self-hosted publish-gate run
+- On failure: workflow fails, uploads artifacts, and opens/updates a GitHub issue
+
+Manual trigger:
+
+```bash
+gh workflow run bookgen-nightly-integrity.yml \
+  --repo <owner>/<repo> \
+  -f project_id=<project-id>
+```
