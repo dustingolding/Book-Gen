@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       project_id:
-        description: "Project ID to validate (default: audit-canary-001)"
+        description: "Project ID to validate (default: closed-session-llm-pilot-003)"
         required: false
-        default: "audit-canary-001"
+        default: "closed-session-llm-pilot-003"
         type: string
 
 permissions:
@@ -20,7 +20,7 @@ jobs:
   integrity-check:
     runs-on: ubuntu-latest
     env:
-      PROJECT_ID: ${{ inputs.project_id != '' && inputs.project_id || 'audit-canary-001' }}
+      PROJECT_ID: ${{ inputs.project_id != '' && inputs.project_id || 'closed-session-llm-pilot-003' }}
       REPO_NAME: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +39,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nightly-integrity-${{ env.PROJECT_ID }}-${{ github.run_id }}
+          if-no-files-found: ignore
           path: |
             exports/publish-handoffs/${{ env.PROJECT_ID }}.json
             exports/publish-artifacts/
