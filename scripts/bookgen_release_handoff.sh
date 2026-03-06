@@ -22,6 +22,7 @@ Options:
   --run-id <id>                  Run ID to collect from (required with --collect-only)
   --output-dir <path>            Artifact output dir (default: exports/publish-artifacts/<run-id>)
   --summary-path <path>          Summary JSON path (default: exports/publish-handoffs/<project-id>.json)
+  --skip-runner-check            Skip online self-hosted runner precheck (not recommended)
   -h, --help                     Show help
 EOF
 }
@@ -34,6 +35,7 @@ COLLECT_ONLY="false"
 RUN_ID=""
 OUTPUT_DIR=""
 SUMMARY_PATH=""
+SKIP_RUNNER_CHECK="false"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -46,6 +48,7 @@ while [[ $# -gt 0 ]]; do
     --run-id) RUN_ID="$2"; shift 2 ;;
     --output-dir) OUTPUT_DIR="$2"; shift 2 ;;
     --summary-path) SUMMARY_PATH="$2"; shift 2 ;;
+    --skip-runner-check) SKIP_RUNNER_CHECK="true"; shift 1 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage; exit 1 ;;
   esac
@@ -61,6 +64,18 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
 if [[ "${COLLECT_ONLY}" != "true" ]]; then
+  if [[ "${WORKFLOW_FILE}" == "bookgen-publish-gate-selfhosted.yml" ]] && [[ "${SKIP_RUNNER_CHECK}" != "true" ]]; then
+    online_runners="$(gh api "repos/${REPO}/actions/runners" --jq '[.runners[] | select(.status=="online")] | length')"
+    if [[ -z "${online_runners}" ]]; then
+      online_runners="0"
+    fi
+    if [[ "${online_runners}" == "0" ]]; then
+      echo "No online self-hosted runners found for ${REPO}; aborting dispatch." >&2
+      echo "Bring a runner online or re-run with --skip-runner-check." >&2
+      exit 1
+    fi
+  fi
+
   ./scripts/bookgen_trigger_publish_gate.sh \
     --repo "${REPO}" \
     --workflow "${WORKFLOW_FILE}" \

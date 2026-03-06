@@ -248,6 +248,12 @@ Local helper commands:
   --project-id <project-id> \
   --collect-only \
   --run-id <run-id>
+
+# 11) Optional override if self-hosted runner discovery is unavailable
+./scripts/bookgen_release_handoff.sh \
+  --repo <owner>/<repo> \
+  --project-id <project-id> \
+  --skip-runner-check
 ```
 
 ## Nightly Integrity Monitor
