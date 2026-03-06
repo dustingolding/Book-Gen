@@ -88,7 +88,7 @@ if [[ "${COLLECT_ONLY}" != "true" ]]; then
     --workflow "${WORKFLOW_FILE}" \
     --limit 1 \
     --json databaseId,conclusion \
-    --jq '.[] | select(.conclusion=="success") | .databaseId' | head -n1)"
+    --jq 'map(select(.conclusion=="success")) | .[0].databaseId // ""')"
 fi
 
 if [[ -z "${RUN_ID}" ]]; then
@@ -97,7 +97,7 @@ if [[ -z "${RUN_ID}" ]]; then
     --workflow "${WORKFLOW_FILE}" \
     --limit 20 \
     --json databaseId,conclusion \
-    --jq '.[] | select(.conclusion=="success") | .databaseId' | head -n1)"
+    --jq 'map(select(.conclusion=="success")) | .[0].databaseId // ""')"
   if [[ -z "${RUN_ID}" ]]; then
     echo "Could not resolve successful run ID." >&2
     exit 1
