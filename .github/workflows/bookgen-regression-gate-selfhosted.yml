@@ -18,7 +18,7 @@ on:
       image:
         description: "Pinned runtime image tag (default frozen baseline)"
         required: false
-        default: "ghcr.io/dustingolding/slw-dailycast-base:git-b1a801f-20260306163947"
+        default: ""
         type: string
 
 permissions:
@@ -34,7 +34,7 @@ jobs:
   regression-gate:
     runs-on: [self-hosted, linux]
     env:
-      IMAGE: ${{ inputs.image != '' && inputs.image || 'ghcr.io/dustingolding/slw-dailycast-base:git-b1a801f-20260306163947' }}
+      IMAGE: ${{ inputs.image != '' && inputs.image || (vars.BOOKGEN_PROD_IMAGE != '' && vars.BOOKGEN_PROD_IMAGE || 'ghcr.io/dustingolding/slw-dailycast-base:git-b1a801f-20260306163947') }}
       LLM_CHAPTER_LIMIT: ${{ inputs.llm_chapter_limit != '' && inputs.llm_chapter_limit || '1' }}
       RESOURCE_PROFILE: ${{ inputs.resource_profile != '' && inputs.resource_profile || 'light' }}
       TARGET_REPO: ${{ github.repository }}

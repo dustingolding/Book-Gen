@@ -8,6 +8,15 @@ Current production pinned runtime image:
 
 Do not use mutable `:latest` for production validation or publish handoff.
 
+GitHub workflow gates read the frozen pin from repository variable `BOOKGEN_PROD_IMAGE`.
+Set or update it with:
+
+```bash
+./scripts/bookgen_set_prod_image_var.sh \
+  --repo dustingolding/Book-Gen \
+  --image ghcr.io/dustingolding/slw-dailycast-base:git-b1a801f-20260306163947
+```
+
 ## Standard Series Commands
 
 Run a known series with frozen defaults, promotion, and strict handoff:
