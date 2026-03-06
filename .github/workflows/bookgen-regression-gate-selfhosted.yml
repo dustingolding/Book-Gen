@@ -81,11 +81,19 @@ jobs:
           mkdir -p ~/.kube
           echo "${KUBE_CONFIG_B64}" | base64 -d > ~/.kube/config
 
-      - name: Load MinIO credentials from cluster secret (self-hosted)
+      - name: Load MinIO/LakeFS credentials from cluster secret (self-hosted)
         run: |
           if [[ -f "${HOME}/.kube/config" ]]; then
             ak="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.MINIO_ACCESS_KEY}' | base64 -d | tr -d '\r\n')"
             sk="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.MINIO_SECRET_KEY}' | base64 -d | tr -d '\r\n')"
+            lek="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.LAKEFS_ACCESS_KEY}' | base64 -d | tr -d '\r\n')"
+            lsk="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.LAKEFS_SECRET_KEY}' | base64 -d | tr -d '\r\n')"
+            lep="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.LAKEFS_ENDPOINT}' | base64 -d | tr -d '\r\n')"
+            lrp="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.LAKEFS_REPOSITORY}' | base64 -d | tr -d '\r\n')"
+            if [[ -z "${lrp}" ]]; then
+              lrp="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.LAKEFS_REPO}' | base64 -d | tr -d '\r\n')"
+            fi
+            lbr="$(kubectl -n sideline-wire-dailycast get secret slw-dailycast-secrets -o jsonpath='{.data.LAKEFS_BRANCH}' | base64 -d | tr -d '\r\n')"
             if [[ -n "${ak}" && -n "${sk}" ]]; then
               {
                 echo "MINIO_ACCESS_KEY=${ak}"
@@ -94,6 +102,24 @@ jobs:
             else
               echo "MinIO credentials in Kubernetes secret are empty." >&2
               exit 1
+            fi
+            if [[ -n "${lek}" && -n "${lsk}" ]]; then
+              {
+                echo "LAKEFS_ACCESS_KEY=${lek}"
+                echo "LAKEFS_SECRET_KEY=${lsk}"
+              } >> "${GITHUB_ENV}"
+            fi
+            if [[ -n "${lep}" ]]; then
+              echo "LAKEFS_ENDPOINT=${lep}" >> "${GITHUB_ENV}"
+            fi
+            if [[ -n "${lrp}" ]]; then
+              {
+                echo "LAKEFS_REPOSITORY=${lrp}"
+                echo "LAKEFS_REPO=${lrp}"
+              } >> "${GITHUB_ENV}"
+            fi
+            if [[ -n "${lbr}" ]]; then
+              echo "LAKEFS_BRANCH=${lbr}" >> "${GITHUB_ENV}"
             fi
           fi
 
