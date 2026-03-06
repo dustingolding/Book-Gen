@@ -25,14 +25,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run strict handoff integrity check
+      - name: Resolve latest publish-gate run for project artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          artifact_name="publish-package-${PROJECT_ID}"
+          run_id="$(gh api "repos/${REPO_NAME}/actions/artifacts?per_page=100" --jq "[.artifacts[] | select(.name==\"${artifact_name}\" and .expired==false) | .workflow_run.id][0] // \"\"")"
+          if [[ -z "${run_id}" ]]; then
+            echo "No non-expired artifact found for ${artifact_name}" >&2
+            exit 1
+          fi
+          echo "RUN_ID=${run_id}" >> "${GITHUB_ENV}"
+
+      - name: Run collect-only handoff integrity check
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           ./scripts/bookgen_release_handoff.sh \
             --repo "${REPO_NAME}" \
             --project-id "${PROJECT_ID}" \
-            --skip-runner-check
+            --collect-only \
+            --run-id "${RUN_ID}"
 
       - name: Upload nightly integrity artifacts
         if: always()
