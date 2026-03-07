@@ -123,8 +123,8 @@ BOOKGEN_GENERATION_PROFILES = {
     },
     "production": {
         "llm_opening_min_words": 3000,
-        "llm_general_min_ratio": 0.6,
-        "llm_general_min_floor": 900,
+        "llm_general_min_ratio": 0.9,
+        "llm_general_min_floor": 2200,
         "structural_retry_limit": 2,
         "chapter_llm_limit": 0,
         "eval_llm_limit": 0,
