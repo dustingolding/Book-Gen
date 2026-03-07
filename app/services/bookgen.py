@@ -1312,6 +1312,7 @@ def _synthesize_constitution(
     form = "standalone" if (planned_length or 1) == 1 else "series"
     themes = bookspec.get("themes") or ["pressure reveals identity"]
     tone_description = str(bookspec.get("tone", "grounded, tension-forward prose with clear consequences"))
+    author = str(bookspec.get("author", "")).strip()
     setting_rules = _split_csvish(bookspec.get("setting_rules")) or ["cause and effect remain legible on the page"]
     locations = _split_csvish(bookspec.get("locations")) or ["primary operating environment", "private threshold space"]
     characters = _build_character_registry(bookspec)
@@ -1320,6 +1321,7 @@ def _synthesize_constitution(
         "schema_version": "1.0",
         "constitution_id": f"{project_id}-constitution",
         "title": series_title,
+        "author": author,
         "created_utc": _iso_from_run_date(run_date),
         "updated_utc": _iso_from_run_date(run_date),
         "narrative_identity": {
