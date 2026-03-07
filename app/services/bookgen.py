@@ -2655,6 +2655,10 @@ def _bookgen_editorial_stage_gate_enabled() -> bool:
     return bool(getattr(get_settings(), "bookgen_editorial_stage_gate", True))
 
 
+def _bookgen_force_redraft_enabled() -> bool:
+    return bool(getattr(get_settings(), "bookgen_force_redraft", False))
+
+
 def _title_critic_prompts(strategy: dict[str, Any], brief: dict[str, Any], finalists: list[dict[str, Any]]) -> tuple[str, str]:
     system_prompt = (
         "You are a title critic for a fiction series. Return only one JSON object. "
@@ -4155,6 +4159,7 @@ def _front_matter_markdown(*, constitution: dict[str, Any], installment_pack: di
 
 def _toc_markdown(*, outline: dict[str, Any]) -> str:
     lines = ["# Table of Contents", ""]
+    force_redraft = _bookgen_force_redraft_enabled()
     for chapter in outline["chapters"]:
         lines.append(f"- Chapter {int(chapter['chapter_index'])}: {chapter['title']}")
     return "\n".join(lines) + "\n"
@@ -5136,6 +5141,7 @@ def run_chapter_drafting(*, project_id: str) -> dict[str, Any]:
     skipped = 0
     artifacts: dict[str, str] = {}
     generation_traces: list[dict[str, Any]] = []
+    force_redraft = _bookgen_force_redraft_enabled()
 
     for chapter in outline["chapters"]:
         chapter_index = int(chapter["chapter_index"])
@@ -5150,7 +5156,7 @@ def run_chapter_drafting(*, project_id: str) -> dict[str, Any]:
         draft_qc_history_key = f"{root}/draft_qc_history.yaml"
         generation_trace_key = f"{root}/generation_trace.yaml"
         draft_key = f"{root}/draft.md"
-        if store.exists(chapter_pack_key) and store.exists(draft_key) and store.exists(draft_qc_key):
+        if not force_redraft and store.exists(chapter_pack_key) and store.exists(draft_key) and store.exists(draft_qc_key):
             existing_draft_qc = _read_yaml(store, draft_qc_key)
             existing_pass = str(existing_draft_qc.get("pass_status", "FAIL")).strip().upper() == "PASS"
             if existing_pass:

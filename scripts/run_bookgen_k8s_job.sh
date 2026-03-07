@@ -22,6 +22,7 @@ Optional:
   --bookgen-eval-use-llm <true|false>      (default: false)
   --bookgen-rewrite-use-llm <true|false>   (default: false)
   --bookgen-allow-lock-override <true|false> (default: false)
+  --bookgen-force-redraft <true|false>     (default: false)
   --with-analytics-report <true|false>     (default: false)
   --lakefs-enabled <true|false>            (default: inherited from cluster env)
   --llm-timeout-seconds <int>              (default: 60)
@@ -53,6 +54,7 @@ BOOKGEN_LLM_CHAPTER_LIMIT="0"
 BOOKGEN_EVAL_USE_LLM="false"
 BOOKGEN_REWRITE_USE_LLM="false"
 BOOKGEN_ALLOW_LOCK_OVERRIDE="false"
+BOOKGEN_FORCE_REDRAFT="false"
 WITH_ANALYTICS_REPORT="false"
 LAKEFS_ENABLED_OVERRIDE=""
 LLM_TIMEOUT_SECONDS="60"
@@ -86,6 +88,7 @@ while [[ $# -gt 0 ]]; do
     --bookgen-eval-use-llm) BOOKGEN_EVAL_USE_LLM="$2"; shift 2 ;;
     --bookgen-rewrite-use-llm) BOOKGEN_REWRITE_USE_LLM="$2"; shift 2 ;;
     --bookgen-allow-lock-override) BOOKGEN_ALLOW_LOCK_OVERRIDE="$2"; shift 2 ;;
+    --bookgen-force-redraft) BOOKGEN_FORCE_REDRAFT="$2"; shift 2 ;;
     --with-analytics-report) WITH_ANALYTICS_REPORT="$2"; shift 2 ;;
     --lakefs-enabled) LAKEFS_ENABLED_OVERRIDE="$2"; shift 2 ;;
     --llm-timeout-seconds) LLM_TIMEOUT_SECONDS="$2"; shift 2 ;;
@@ -143,6 +146,10 @@ if [[ "${WITH_ANALYTICS_REPORT}" != "true" && "${WITH_ANALYTICS_REPORT}" != "fal
 fi
 if [[ "${BOOKGEN_ALLOW_LOCK_OVERRIDE}" != "true" && "${BOOKGEN_ALLOW_LOCK_OVERRIDE}" != "false" ]]; then
   echo "--bookgen-allow-lock-override must be true or false."
+  exit 1
+fi
+if [[ "${BOOKGEN_FORCE_REDRAFT}" != "true" && "${BOOKGEN_FORCE_REDRAFT}" != "false" ]]; then
+  echo "--bookgen-force-redraft must be true or false."
   exit 1
 fi
 if [[ -n "${LAKEFS_ENABLED_OVERRIDE}" ]] && [[ "${LAKEFS_ENABLED_OVERRIDE}" != "true" && "${LAKEFS_ENABLED_OVERRIDE}" != "false" ]]; then
@@ -293,6 +300,8 @@ ${BOOKGEN_JOB_COMMAND_BLOCK}
               value: "${BOOKGEN_REWRITE_USE_LLM}"
             - name: BOOKGEN_ALLOW_LOCK_OVERRIDE
               value: "${BOOKGEN_ALLOW_LOCK_OVERRIDE}"
+            - name: BOOKGEN_FORCE_REDRAFT
+              value: "${BOOKGEN_FORCE_REDRAFT}"
             - name: BOOKGEN_EVAL_LLM_CHAPTER_LIMIT
               value: "0"
             - name: BOOKGEN_REWRITE_LLM_CHAPTER_LIMIT

@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     bookgen_structural_retry_limit: int = Field(default=0, alias="BOOKGEN_STRUCTURAL_RETRY_LIMIT")
     bookgen_editorial_stage_gate: bool = Field(default=True, alias="BOOKGEN_EDITORIAL_STAGE_GATE")
     bookgen_allow_lock_override: bool = Field(default=False, alias="BOOKGEN_ALLOW_LOCK_OVERRIDE")
+    bookgen_force_redraft: bool = Field(default=False, alias="BOOKGEN_FORCE_REDRAFT")
     factpack_use_llm: bool = Field(default=False, alias="FACTPACK_USE_LLM")
     allow_synthetic_fallback: bool = Field(default=False, alias="ALLOW_SYNTHETIC_FALLBACK")
     transcript_require_llm: bool = Field(default=True, alias="TRANSCRIPT_REQUIRE_LLM")
