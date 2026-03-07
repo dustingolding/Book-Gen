@@ -1104,6 +1104,16 @@ def test_opening_chapter_soft_rewrite_trigger():
     assert bookgen._opening_chapter_soft_rewrite_required(late_chapter_pack, eval_report) is False
 
 
+def test_dedupe_paragraph_blocks_removes_repeated_narrative_chunks():
+    paragraph_a = "Adrian reviewed the file in silence, weighing the cost of exposing what he had found under sealed process."
+    paragraph_b = "Maya warned that a rushed disclosure would trigger institutional retaliation and bury the committee in delay."
+    text = f"{paragraph_a}\n\n{paragraph_b}\n\n{paragraph_a}\n\nShort bridge."
+    deduped = bookgen._dedupe_paragraph_blocks(text)
+    assert deduped.count(paragraph_a) == 1
+    assert paragraph_b in deduped
+    assert "Short bridge." in deduped
+
+
 def test_smoke_preset_applies_bounded_llm_defaults(monkeypatch):
     monkeypatch.setattr(
         bookgen,

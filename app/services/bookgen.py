@@ -2300,7 +2300,23 @@ def _world_rule_compliance_rewrite(text: str, chapter_pack: dict[str, Any]) -> s
     if compliance_paragraphs:
         softened = softened.strip() + "\n\n" + "\n\n".join(compliance_paragraphs)
     heading = text.splitlines()[0].strip() if text.splitlines() and text.splitlines()[0].startswith("# ") else f"# {chapter_pack['chapter_card'].get('title') or chapter_pack['chapter_id'].upper()}"
+    softened = _dedupe_paragraph_blocks(softened)
     return f"{heading}\n\n{softened.strip()}\n"
+
+
+def _dedupe_paragraph_blocks(text: str) -> str:
+    paragraphs = [part.strip() for part in text.split("\n\n") if part.strip()]
+    seen: set[str] = set()
+    kept: list[str] = []
+    for paragraph in paragraphs:
+        normalized = re.sub(r"\s+", " ", paragraph).strip().lower()
+        # Only dedupe meaningful narrative blocks; keep short connective lines.
+        if len(normalized) >= 80:
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+        kept.append(paragraph)
+    return "\n\n".join(kept)
 
 
 def _rewrite_chapter_text(text: str, chapter_pack: dict[str, Any], eval_report: dict[str, Any]) -> str:
@@ -2333,6 +2349,7 @@ def _rewrite_chapter_text(text: str, chapter_pack: dict[str, Any], eval_report: 
     if not additions:
         additions.append("The closing beat now connects the reveal to the next consequence with less abstraction and more visible pressure.")
     rewritten_body = body + "\n\n" + "\n\n".join(additions)
+    rewritten_body = _dedupe_paragraph_blocks(rewritten_body)
     heading = lines[0] if lines and lines[0].startswith("# ") else f"# {chapter_pack['chapter_id'].upper()}"
     rewritten = f"{heading}\n\n{rewritten_body.strip()}\n"
     if eval_report["drift_flags"].get("world_rule_break"):
