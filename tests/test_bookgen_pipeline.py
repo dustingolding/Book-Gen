@@ -955,6 +955,140 @@ def test_bookgen_hybrid_eval_rewrites_one_chapter(monkeypatch):
     assert eval_report["pass_status"] in {"PASS", "PASS_WITH_NOTES"}
 
 
+def test_bookgen_review_rewrites_when_editorial_stage_fails(monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(root)
+
+    backing: dict[str, bytes] = {}
+    monkeypatch.setattr(bookgen, "ObjectStore", lambda: MemoryStore(backing))
+    monkeypatch.setattr(bookgen, "_commit_stage_checkpoint", lambda **kwargs: None)
+    monkeypatch.setattr(bookgen, "_log_mlflow_summary", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        bookgen,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bookgen_use_llm=False,
+            bookgen_llm_chapter_limit=0,
+            bookgen_eval_use_llm=True,
+            bookgen_eval_llm_chapter_limit=1,
+            bookgen_rewrite_use_llm=True,
+            bookgen_rewrite_llm_chapter_limit=1,
+            bookgen_title_critic_use_llm=False,
+            bookgen_title_critic_shortlist_size=5,
+            bookgen_editorial_stage_gate=True,
+            llm_endpoint="stub://llm",
+        ),
+    )
+
+    class StubLLMClient:
+        eval_calls = 0
+
+        def complete(self, system_prompt: str, user_prompt: str, *, max_completion_tokens: int | None = None, temperature: float = 0.2) -> str:
+            del system_prompt, max_completion_tokens, temperature
+            if "Evaluate this chapter" in user_prompt:
+                self.__class__.eval_calls += 1
+                if self.__class__.eval_calls == 1:
+                    return json.dumps(
+                        {
+                                "scores": {
+                                    "thematic_coherence": 8.2,
+                                    "character_consistency": 8.0,
+                                    "voice_stability": 1.0,
+                                "world_rule_compliance": 8.5,
+                                "escalation_compliance": 8.2,
+                                "pacing": 8.0,
+                                "structural_clarity": 7.9,
+                                "originality": 7.7,
+                            },
+                            "drift_flags": {
+                                "character_voice_shift": True,
+                                "moral_boundary_violation": False,
+                                "theme_absence": False,
+                                "escalation_violation": False,
+                                "world_rule_break": False,
+                                "continuity_contradiction": True,
+                            },
+                            "violations": [
+                                {"type": "voice_repetition", "severity": "moderate", "note": "Voice drifts and repeats."}
+                            ],
+                            "rewrite_recommendations": [
+                                {"category": "voice", "action": "Stabilize voice and remove repeated section."}
+                            ],
+                            "pass_status": "PASS",
+                            "summary": "Content is broadly good but voice drifts.",
+                        }
+                    )
+                return json.dumps(
+                    {
+                        "scores": {
+                            "thematic_coherence": 8.4,
+                            "character_consistency": 8.3,
+                            "voice_stability": 8.1,
+                            "world_rule_compliance": 8.6,
+                            "escalation_compliance": 8.4,
+                            "pacing": 8.2,
+                            "structural_clarity": 8.1,
+                            "originality": 7.8,
+                        },
+                        "drift_flags": {
+                            "character_voice_shift": False,
+                            "moral_boundary_violation": False,
+                            "theme_absence": False,
+                            "escalation_violation": False,
+                            "world_rule_break": False,
+                            "continuity_contradiction": False,
+                        },
+                        "violations": [],
+                        "rewrite_recommendations": [],
+                        "pass_status": "PASS",
+                        "summary": "Revision fixed voice and continuity drift.",
+                    }
+                )
+            return "# Rewritten Chapter\n\nA corrected scene removes repetition and restores a stable narrative voice.\n"
+
+    monkeypatch.setattr(bookgen, "LLMClient", StubLLMClient)
+
+    project_id = "demo-thriller-editorial-rewrite-001"
+    bookspec = json.loads((root / "docs/bookgen/bookspec.sample.json").read_text(encoding="utf-8"))
+    bookspec["chapter_count"] = 1
+    backing[f"inputs/{project_id}/bookspec.json"] = json.dumps(bookspec).encode("utf-8")
+    backing["prompt-packs/thriller/v1/manifest.json"] = json.dumps(
+        {"genre": "thriller", "version": "v1", "structure": {"acts": 3}}
+    ).encode("utf-8")
+    backing["rubrics/thriller/v1/rubric.json"] = json.dumps(
+        {
+            "genre": "thriller",
+            "version": "v1",
+            "chapter_min_words": 120,
+            "pass_overall": 7.0,
+            "hard_fail": [
+                {"category": "world_rule_compliance", "min_score": 7.0},
+                {"category": "character_consistency", "min_score": 7.0},
+            ],
+        }
+    ).encode("utf-8")
+
+    intake = bookgen.run_intake(project_id=project_id, run_date="2026-02-10")
+    resolved = bookgen.run_prompt_pack_resolve(intake=intake)
+    bookgen.run_bible_outline(intake=intake, resolved=resolved)
+    bookgen.run_chapter_drafting(project_id=project_id)
+    review = bookgen.run_chapter_review(project_id=project_id)
+
+    assert review["passed_chapters"] == 1
+    assert review["failed_chapters"] == 0
+    _ = backing["bookgen/demo-thriller-editorial-rewrite-001/installments/book-01/chapters/ch-01/final.md"].decode("utf-8")
+    eval_report = yaml.safe_load(
+        backing["bookgen/demo-thriller-editorial-rewrite-001/installments/book-01/chapters/ch-01/eval.yaml"].decode("utf-8")
+    )
+    editorial_summary = yaml.safe_load(
+        backing["bookgen/demo-thriller-editorial-rewrite-001/installments/book-01/chapters/ch-01/editorial_stages.yaml"].decode("utf-8")
+    )
+    assert StubLLMClient.eval_calls >= 2
+    assert "bookgen/demo-thriller-editorial-rewrite-001/installments/book-01/chapters/ch-01/rewrite_contract_attempt_1.yaml" in backing
+    assert eval_report["pass_status"] in {"PASS", "PASS_WITH_NOTES"}
+    assert editorial_summary["pass_status"] == "PASS"
+
+
 def test_opening_chapter_soft_rewrite_trigger():
     chapter_pack = {"chapter_index": 1}
     eval_report = {

@@ -4520,6 +4520,22 @@ def _proof_balance_status(text: str) -> dict[str, Any]:
     return {"balanced": all(item["balanced"] for item in checks), "checks": checks}
 
 
+def _is_eval_pass_status(eval_report: dict[str, Any]) -> bool:
+    return str(eval_report.get("pass_status", "FAIL")).strip().upper() != "FAIL"
+
+
+def _should_promote_eval_candidate(candidate: dict[str, Any], best: dict[str, Any] | None) -> bool:
+    if best is None:
+        return True
+    candidate_pass = _is_eval_pass_status(candidate)
+    best_pass = _is_eval_pass_status(best)
+    if candidate_pass and not best_pass:
+        return True
+    if candidate_pass == best_pass:
+        return float(candidate.get("overall", 0.0)) >= float(best.get("overall", 0.0))
+    return False
+
+
 def _editorial_stage_manifests(
     *,
     chapter_pack: dict[str, Any],
@@ -4689,6 +4705,19 @@ def _editorial_stage_manifests(
         "created_utc": _utcnow(),
     }
     return {"stages": stage_payloads, "summary": summary}
+
+
+def _append_editorial_gate_failure(eval_report: dict[str, Any]) -> None:
+    violations = eval_report.setdefault("violations", [])
+    if any(str(item.get("type", "")).strip() == "editorial_stage_gate_failure" for item in violations if isinstance(item, dict)):
+        return
+    violations.append(
+        {
+            "type": "editorial_stage_gate_failure",
+            "severity": "high",
+            "note": "One or more editorial stages failed (developmental/line/copy/style/proof).",
+        }
+    )
 
 
 def _salient_terms(text: str, *, limit: int = 8) -> list[str]:
@@ -5353,9 +5382,24 @@ def run_chapter_review(*, project_id: str) -> dict[str, Any]:
                     )
                     eval_report["pass_status"] = "FAIL"
             _validate_structured_payload(eval_report, "eval_report")
-            if best_eval is None or eval_report["overall"] >= best_eval["overall"]:
+            editorial_preview_failed = False
+            if editorial_gate_enabled:
+                editorial_preview = _editorial_stage_manifests(
+                    chapter_pack=chapter_pack,
+                    eval_report=eval_report,
+                    text=best_text,
+                )
+                editorial_preview_failed = editorial_preview["summary"]["pass_status"] != "PASS"
+                if editorial_preview_failed:
+                    _append_editorial_gate_failure(eval_report)
+                    eval_report["pass_status"] = "FAIL"
+            if _should_promote_eval_candidate(eval_report, best_eval):
                 best_eval = eval_report
-            if eval_report["pass_status"] != "FAIL" and not _opening_chapter_soft_rewrite_required(chapter_pack, eval_report):
+            if (
+                eval_report["pass_status"] != "FAIL"
+                and not editorial_preview_failed
+                and not _opening_chapter_soft_rewrite_required(chapter_pack, eval_report)
+            ):
                 break
             if previous_overall >= 0 and eval_report["overall"] <= previous_overall:
                 plateau_count += 1
@@ -5395,13 +5439,7 @@ def run_chapter_review(*, project_id: str) -> dict[str, Any]:
         _validate_structured_payload(editorial["summary"], "editorial_stage_summary")
         _write_yaml(store, _editorial_stage_summary_key(root), editorial["summary"], artifacts)
         if editorial_gate_enabled and editorial["summary"]["pass_status"] != "PASS":
-            best_eval["violations"].append(
-                {
-                    "type": "editorial_stage_gate_failure",
-                    "severity": "high",
-                    "note": "One or more editorial stages failed (developmental/line/copy/style/proof).",
-                }
-            )
+            _append_editorial_gate_failure(best_eval)
             best_eval["pass_status"] = "FAIL"
         _write_yaml(store, eval_key, best_eval, artifacts)
         _write_yaml(store, editorial_qc_key, editorial["summary"] if editorial_gate_enabled else best_eval, artifacts)
